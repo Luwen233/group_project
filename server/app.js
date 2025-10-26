@@ -153,6 +153,78 @@ app.get('/auth/profile', (req, res) => {
 
 ///=========================================================================
 
+app.get('/rooms', (req, res) => {
+
+});
+
+app.get('/rooms/:id', (req, res) => {
+
+});
+
+app.post('/rooms/:type', (req, res) => {
+
+});
+
+app.patch('/rooms/:id', (req, res) => {
+
+});
+
+app.patch('/rooms/:id/disable', (req, res) => {
+
+});
+
+///=========================================================================
+
+app.get('/timeslots/', (req, res) => {
+
+});
+
+app.get('/timeslots/', (req, res) => {
+
+});
+///=========================================================================
+
+app.post('/bookings', (req, res) => {
+
+});
+
+app.get('/bookings', (req, res) => {
+
+});
+
+app.get('/bookings/:id', (req, res) => {
+
+});
+
+app.patch('/bookings/:id/cancel', (req, res) => {
+
+});
+
+app.get('/bookings/requests', (req, res) => {
+
+});
+
+app.patch('/bookings/:id/approve', (req, res) => {
+
+});
+
+app.patch('/bookings/reject', (req, res) => {
+
+});
+
+///=========================================================================
+
+app.get('/logs', (req, res) => {
+
+});
+
+app.get('/logs/user/:id', (req, res) => {
+
+});
+
+app.get('/logs/room/:id', (req, res) => {
+
+});
 
 
 
