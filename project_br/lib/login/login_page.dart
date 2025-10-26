@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:project_br/login/signup_page.dart';
 import 'package:project_br/widget_tree.dart';
-import 'signup_page.dart';
 
-class LoginPage extends StatelessWidget {
+
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final usernameController = TextEditingController();
     final passwordController = TextEditingController();
     const Color mainColor = Color(0xFF3C9CBF);
+    bool obscurePassword = true;
 
     void login() {
       if (usernameController.text == "admin" &&
@@ -67,10 +74,21 @@ class LoginPage extends StatelessWidget {
                 const SizedBox(height: 16),
                 TextField(
                   controller: passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
+                  obscureText: obscurePassword,
+                  decoration: InputDecoration(
                     hintText: 'password',
-                    suffixIcon: Icon(Icons.visibility_off),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          obscurePassword = !obscurePassword;
+                        });
+                      },
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
