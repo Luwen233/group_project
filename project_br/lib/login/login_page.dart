@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'signup_page.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
@@ -78,7 +79,12 @@ class LoginPage extends StatelessWidget {
                   children: [
                     const Text("Don't have an account? "),
                     GestureDetector(
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const SignUpPage()),
+                        );
+                      },
                       child: const Text(
                         "Sign up",
                         style: TextStyle(color: Colors.blue),
