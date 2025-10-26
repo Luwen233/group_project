@@ -1,17 +1,41 @@
 import 'package:flutter/material.dart';
 import 'login_page.dart';
 
-class SignUpPage extends StatelessWidget {
+class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final emailController = TextEditingController();
-    final usernameController = TextEditingController();
-    final passwordController = TextEditingController();
-    final confirmController = TextEditingController();
-    const Color mainColor = Color(0xFF3C9CBF);
+  State<SignUpPage> createState() => _SignUpPageState();
+}
 
+class _SignUpPageState extends State<SignUpPage> {
+  final emailController = TextEditingController();
+  final usernameController = TextEditingController();
+  final passwordController = TextEditingController();
+  final confirmController = TextEditingController();
+
+  bool _obscurePassword = true;
+  bool _obscureConfirm = true;
+
+  void _signup() {
+    if (passwordController.text == confirmController.text &&
+        usernameController.text.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Account created! Please log in.")),
+      );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Passwords do not match")),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       body: Column(
         children: [
@@ -19,7 +43,7 @@ class SignUpPage extends StatelessWidget {
             width: MediaQuery.of(context).size.width,
             height: 250,
             decoration: const BoxDecoration(
-              color: mainColor,
+              color: Color(0xFF4CA1AF),
               borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(40),
                 bottomRight: Radius.circular(40),
@@ -28,18 +52,10 @@ class SignUpPage extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: const [
-                Text(
-                  "R",
-                  style: TextStyle(fontSize: 100, fontWeight: FontWeight.bold),
-                ),
+                Text("R", style: TextStyle(fontSize: 100, fontWeight: FontWeight.bold)),
                 SizedBox(height: 8),
-                Text(
-                  "Reservation",
-                  style: TextStyle(
-                    fontStyle: FontStyle.italic,
-                    fontSize: 18,
-                  ),
-                ),
+                Text("Reservation",
+                    style: TextStyle(fontStyle: FontStyle.italic, fontSize: 18)),
               ],
             ),
           ),
@@ -60,27 +76,54 @@ class SignUpPage extends StatelessWidget {
                 const SizedBox(height: 16),
                 TextField(
                   controller: passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(hintText: 'password'),
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
+                    hintText: 'password',
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: confirmController,
-                  obscureText: true,
-                  decoration:
-                      const InputDecoration(hintText: 'confirm password'),
+                  obscureText: _obscureConfirm,
+                  decoration: InputDecoration(
+                    hintText: 'confirm password',
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureConfirm
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscureConfirm = !_obscureConfirm;
+                        });
+                      },
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: mainColor,
+                    backgroundColor: const Color(0xFF4CA1AF),
                     minimumSize: const Size(double.infinity, 50),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  onPressed: () {},
-                  child: const Text('Sign Up',style: TextStyle(color: Colors.white),),
+                  onPressed: _signup,
+                  child: const Text('Sign Up'),
                 ),
                 const SizedBox(height: 16),
                 Row(
