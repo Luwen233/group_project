@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:project_br/widget_tree.dart';
 import 'signup_page.dart';
 
 class LoginPage extends StatelessWidget {
@@ -9,6 +10,22 @@ class LoginPage extends StatelessWidget {
     final usernameController = TextEditingController();
     final passwordController = TextEditingController();
     const Color mainColor = Color(0xFF3C9CBF);
+
+    void login() {
+      if (usernameController.text == "admin" &&
+          passwordController.text == "1234") { ///testing
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const WidgetTree(),
+          ), 
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Invalid username or password")),
+        );
+      }
+    }
 
     return Scaffold(
       body: Column(
@@ -33,10 +50,7 @@ class LoginPage extends StatelessWidget {
                 SizedBox(height: 8),
                 Text(
                   "Reservation",
-                  style: TextStyle(
-                    fontStyle: FontStyle.italic,
-                    fontSize: 18,
-                  ),
+                  style: TextStyle(fontStyle: FontStyle.italic, fontSize: 18),
                 ),
               ],
             ),
@@ -48,9 +62,7 @@ class LoginPage extends StatelessWidget {
               children: [
                 TextField(
                   controller: usernameController,
-                  decoration: const InputDecoration(
-                    hintText: 'username',
-                  ),
+                  decoration: const InputDecoration(hintText: 'username'),
                 ),
                 const SizedBox(height: 16),
                 TextField(
@@ -70,8 +82,11 @@ class LoginPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  onPressed: () {},
-                  child: const Text('Login',style: TextStyle(color: Colors.white),),
+                  onPressed: login,
+                  child: const Text(
+                    'Login',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -89,7 +104,7 @@ class LoginPage extends StatelessWidget {
                         "Sign up",
                         style: TextStyle(color: Colors.blue),
                       ),
-                    )
+                    ),
                   ],
                 ),
               ],
