@@ -13,6 +13,7 @@ class _SignUpPageState extends State<SignUpPage> {
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
   final confirmController = TextEditingController();
+  final Color mainColor = Color(0xFF3C9CBF);
 
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
@@ -28,9 +29,9 @@ class _SignUpPageState extends State<SignUpPage> {
         MaterialPageRoute(builder: (_) => const LoginPage()),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Passwords do not match")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Passwords do not match")));
     }
   }
 
@@ -42,9 +43,9 @@ class _SignUpPageState extends State<SignUpPage> {
           Container(
             width: MediaQuery.of(context).size.width,
             height: 250,
-            decoration: const BoxDecoration(
-              color: Color(0xFF4CA1AF),
-              borderRadius: BorderRadius.only(
+            decoration: BoxDecoration(
+              color: mainColor,
+              borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(40),
                 bottomRight: Radius.circular(40),
               ),
@@ -52,10 +53,15 @@ class _SignUpPageState extends State<SignUpPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: const [
-                Text("R", style: TextStyle(fontSize: 100, fontWeight: FontWeight.bold)),
+                Text(
+                  "R",
+                  style: TextStyle(fontSize: 100, fontWeight: FontWeight.bold),
+                ),
                 SizedBox(height: 8),
-                Text("Reservation",
-                    style: TextStyle(fontStyle: FontStyle.italic, fontSize: 18)),
+                Text(
+                  "Reservation",
+                  style: TextStyle(fontStyle: FontStyle.italic, fontSize: 18),
+                ),
               ],
             ),
           ),
@@ -65,20 +71,20 @@ class _SignUpPageState extends State<SignUpPage> {
             child: Column(
               children: [
                 TextField(
-                  controller: emailController,
-                  decoration: const InputDecoration(hintText: 'Email Address'),
+                  controller: usernameController,
+                  decoration: const InputDecoration(hintText: 'Username'),
                 ),
                 const SizedBox(height: 16),
                 TextField(
-                  controller: usernameController,
-                  decoration: const InputDecoration(hintText: 'username'),
+                  controller: emailController,
+                  decoration: const InputDecoration(hintText: 'Email Address'),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: passwordController,
                   obscureText: _obscurePassword,
                   decoration: InputDecoration(
-                    hintText: 'password',
+                    hintText: 'Password',
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscurePassword
@@ -98,7 +104,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   controller: confirmController,
                   obscureText: _obscureConfirm,
                   decoration: InputDecoration(
-                    hintText: 'confirm password',
+                    hintText: 'Confirm password',
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscureConfirm
@@ -116,14 +122,17 @@ class _SignUpPageState extends State<SignUpPage> {
                 const SizedBox(height: 24),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4CA1AF),
+                    backgroundColor: mainColor,
                     minimumSize: const Size(double.infinity, 50),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                   onPressed: _signup,
-                  child: const Text('Sign Up'),
+                  child: const Text(
+                    'Sign Up',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -141,7 +150,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         "Login",
                         style: TextStyle(color: Colors.blue),
                       ),
-                    )
+                    ),
                   ],
                 ),
               ],

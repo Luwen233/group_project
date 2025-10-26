@@ -11,12 +11,12 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  final usernameController = TextEditingController();
+  final passwordController = TextEditingController();
+  final Color mainColor = Color(0xFF3C9CBF);
+  bool obscurePassword = true;
   @override
   Widget build(BuildContext context) {
-    final usernameController = TextEditingController();
-    final passwordController = TextEditingController();
-    const Color mainColor = Color(0xFF3C9CBF);
-    bool obscurePassword = true;
 
     void login() {
       if (usernameController.text == "admin" &&
@@ -40,9 +40,9 @@ class _LoginPageState extends State<LoginPage> {
           Container(
             width: MediaQuery.of(context).size.width,
             height: 250,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: mainColor,
-              borderRadius: BorderRadius.only(
+              borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(40),
                 bottomRight: Radius.circular(40),
               ),
@@ -69,14 +69,14 @@ class _LoginPageState extends State<LoginPage> {
               children: [
                 TextField(
                   controller: usernameController,
-                  decoration: const InputDecoration(hintText: 'username'),
+                  decoration: const InputDecoration(hintText: 'Username'),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: passwordController,
                   obscureText: obscurePassword,
                   decoration: InputDecoration(
-                    hintText: 'password',
+                    hintText: 'Password',
                     suffixIcon: IconButton(
                       icon: Icon(
                         obscurePassword
