@@ -8,6 +8,25 @@ class StudentHomePages extends StatefulWidget {
 }
 
 class _StudentHomePagesState extends State<StudentHomePages> {
+  final List<Map<String, dynamic>> _rooms = [
+    {
+      'name': 'Study Room A',
+      'status': 'Free',
+      'image': 'assets/images/room1.jpg',
+    },
+    {
+      'name': 'Law Study Room',
+      'status': 'Disable',
+      'image': 'assets/images/room2.jpg',
+    },
+    {'name': 'Room B101', 'status': 'Free', 'image': 'assets/images/room3.jpg'},
+    {
+      'name': 'Room B102',
+      'status': 'Disable',
+      'image': 'assets/images/room4.jpg',
+    },
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -74,6 +93,93 @@ class _StudentHomePagesState extends State<StudentHomePages> {
               ],
             ),
           ),
+        ),
+      ),
+      body: Padding(
+        padding: EdgeInsets.all(12),
+        child: GridView.builder(
+          itemCount: _rooms.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 16,
+            childAspectRatio: 3 / 3.7,
+          ),
+          itemBuilder: (context, index) {
+            final room = _rooms[index];
+            final isFree = room['status'] == 'Free';
+
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 8,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(16),
+                    ),
+                    child: Image.asset(
+                      room['image'],
+                      height: 120,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    child: Text(
+                      room['name'],
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      left: 12,
+                      right: 12,
+                      bottom: 15,
+                    ),
+                    child: Align(
+                      alignment: Alignment.bottomRight,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isFree ? Color(0xff3BCB53) : Color(0xff4E534E),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          room['status'],
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );
