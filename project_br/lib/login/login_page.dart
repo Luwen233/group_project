@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:project_br/login/signup_page.dart';
-import 'package:project_br/widget_tree.dart';
+import 'package:project_br/widget/widget_tree.dart';
 
 
 class LoginPage extends StatefulWidget {
