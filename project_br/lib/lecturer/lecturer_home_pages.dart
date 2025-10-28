@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:project_br/lecturer/dashboard_summary.dart';
 
 class LecturerHomePages extends StatefulWidget {
   const LecturerHomePages({super.key});
@@ -7,49 +8,29 @@ class LecturerHomePages extends StatefulWidget {
   State<LecturerHomePages> createState() => _LecturerHomePagesState();
 }
 
-final List<Map<String, dynamic>> _rooms = [
-  {
-    'name': 'Study Room A',
-    'status': 'Free',
-    'image': 'assets/images/room1.jpg',
-  },
-  {
-    'name': 'Law Study Room',
-    'status': 'Disable',
-    'image': 'assets/images/room2.jpg',
-  },
-  {'name': 'Room B101', 'status': 'Free', 'image': 'assets/images/room3.jpg'},
-  {
-    'name': 'Room B102',
-    'status': 'Disable',
-    'image': 'assets/images/room4.jpg',
-  },
-];
-
 class _LecturerHomePagesState extends State<LecturerHomePages> {
-  int freeSlots = 0;
-  int reservedSlots = 0;
-  int pendingSlots = 0;
-  int disabledRooms = 0;
+  final List<Map<String, dynamic>> _rooms = [
+    {
+      'name': 'Study Room A',
+      'status': 'Free',
+      'image': 'assets/images/room1.jpg',
+    },
+    {
+      'name': 'Law Study Room',
+      'status': 'Disable',
+      'image': 'assets/images/room2.jpg',
+    },
+    {'name': 'Room B101', 'status': 'Free', 'image': 'assets/images/room3.jpg'},
+    {
+      'name': 'Room B102',
+      'status': 'Disable',
+      'image': 'assets/images/room4.jpg',
+    },
+  ];
 
   @override
-  void initState() {
-    super.initState();
-    _loadDashboardData();
-  }
-
-  void _loadDashboardData() {
-    setState(() {
-      freeSlots = 10;
-      reservedSlots = 3;
-      pendingSlots = 1;
-      disabledRooms = 1;
-    });
-  }
-
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Color(0xFF3C9CBF),
         toolbarHeight: 284,
@@ -64,6 +45,12 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                DashboardSummary(
+                  freeSlots: _rooms.where((room) => room['status'] == 'Free').length,
+                  reservedSlots: 0, // TODO: Add real data
+                  pendingSlots: 0,  // TODO: Add real data
+                  disabledRooms: _rooms.where((room) => room['status'] == 'Disable').length,
+                ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -115,7 +102,6 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
           ),
         ),
       ),
-
       body: Padding(
         padding: EdgeInsets.all(12),
         child: GridView.builder(
