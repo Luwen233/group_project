@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:project_br/login/signup_page.dart';
+import 'package:project_br/staff/pages/linkpage.dart';
 import 'package:project_br/widget_tree.dart';
 
 
@@ -20,6 +21,15 @@ class _LoginPageState extends State<LoginPage> {
 
     void login() {
       if (usernameController.text == "admin" &&
+          passwordController.text == "1234") { ///testing
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const RoomApp(),
+          ), 
+        );
+      }
+      else if (usernameController.text == "student" &&
           passwordController.text == "1234") { ///testing
         Navigator.pushReplacement(
           context,
