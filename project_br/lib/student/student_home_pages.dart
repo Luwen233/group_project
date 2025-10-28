@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:project_br/student/student_room_detail_pages.dart';
 
 class StudentHomePages extends StatefulWidget {
   const StudentHomePages({super.key});
@@ -25,7 +26,33 @@ class _StudentHomePagesState extends State<StudentHomePages> {
       'status': 'Disable',
       'image': 'assets/images/room4.jpg',
     },
+    {
+      'name': 'Law Study Room',
+      'status': 'Full',
+      'image': 'assets/images/room2.jpg',
+    },
+    {
+      'name': 'Law Study Room',
+      'status': 'Full',
+      'image': 'assets/images/room2.jpg',
+    },
   ];
+
+  final _searchBox = TextEditingController();
+
+  List<Map<String, dynamic>> _filteredRooms() {
+    final q = _searchBox.text.trim().toLowerCase();
+    if (q.isEmpty) return _rooms;
+    return _rooms
+        .where((r) => (r['name'] as String).toLowerCase().contains(q))
+        .toList();
+  }
+
+  @override
+  void dispose() {
+    _searchBox.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -81,8 +108,10 @@ class _StudentHomePagesState extends State<StudentHomePages> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(17),
                   ),
-                  child: const TextField(
-                    decoration: InputDecoration(
+                  child: TextField(
+                    controller: _searchBox,
+                    onChanged: (_) => setState(() {}),
+                    decoration: const InputDecoration(
                       hintText: 'Study Room',
                       border: InputBorder.none,
                       suffixIcon: Icon(Icons.search),
@@ -98,7 +127,7 @@ class _StudentHomePagesState extends State<StudentHomePages> {
       body: Padding(
         padding: EdgeInsets.all(12),
         child: GridView.builder(
-          itemCount: _rooms.length,
+          itemCount: _filteredRooms().length,
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             crossAxisSpacing: 12,
@@ -106,77 +135,85 @@ class _StudentHomePagesState extends State<StudentHomePages> {
             childAspectRatio: 3 / 3.7,
           ),
           itemBuilder: (context, index) {
-            final room = _rooms[index];
-            final isFree = room['status'] == 'Free';
+            final room = _filteredRooms()[index];
+            final isFree = (room['status'] as String) == 'Free';
 
-            return Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 8,
-                    offset: Offset(0, 3),
-                  ),
-                ],
+            return GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => RoomDetailPage(room: room)),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(16),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 8,
+                      offset: Offset(0, 3),
                     ),
-                    child: Image.asset(
-                      room['image'],
-                      height: 120,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    child: Text(
-                      room['name'],
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(16),
+                      ),
+                      child: Image.asset(
+                        room['image'] as String,
+                        height: 120,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
                       ),
                     ),
-                  ),
-                  const Spacer(),
-                  Padding(
-                    padding: const EdgeInsets.only(
-                      left: 12,
-                      right: 12,
-                      bottom: 15,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      child: Text(
+                        room['name'] as String,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
                     ),
-                    child: Align(
-                      alignment: Alignment.bottomRight,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isFree ? Color(0xff3BCB53) : Color(0xff4E534E),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          room['status'],
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
+                    const Spacer(),
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        left: 12,
+                        right: 12,
+                        bottom: 15,
+                      ),
+                      child: Align(
+                        alignment: Alignment.bottomRight,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isFree
+                                ? Color(0xff3BCB53)
+                                : Color(0xff4E534E),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            room['status'] as String,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           },
