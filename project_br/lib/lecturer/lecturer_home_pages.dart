@@ -27,9 +27,29 @@ final List<Map<String, dynamic>> _rooms = [
 ];
 
 class _LecturerHomePagesState extends State<LecturerHomePages> {
+  int freeSlots = 0;
+  int reservedSlots = 0;
+  int pendingSlots = 0;
+  int disabledRooms = 0;
+
   @override
+  void initState() {
+    super.initState();
+    _loadDashboardData();
+  }
+
+  void _loadDashboardData() {
+    setState(() {
+      freeSlots = 10;
+      reservedSlots = 3;
+      pendingSlots = 1;
+      disabledRooms = 1;
+    });
+  }
+
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Color(0xFF3C9CBF),
         toolbarHeight: 284,
@@ -95,6 +115,7 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
           ),
         ),
       ),
+
       body: Padding(
         padding: EdgeInsets.all(12),
         child: GridView.builder(
