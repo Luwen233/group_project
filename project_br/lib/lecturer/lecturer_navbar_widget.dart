@@ -1,27 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:project_br/student/notifiers.dart';
+import 'package:project_br/lecturer/booking_notifiers.dart';
 
-class StudentNavbarWidget extends StatelessWidget {
-  const StudentNavbarWidget({super.key});
+class LecturerNavbarWidget extends StatelessWidget {
+  const LecturerNavbarWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<int>(
-      valueListenable: selectedPageNotifer,
+      valueListenable: selectedPageNotifier,
       builder: (context, selectedPage, child) {
         return NavigationBar(
+          height: 70,
           selectedIndex: selectedPage,
-          onDestinationSelected: (value) => selectedPageNotifer.value = value,
+          onDestinationSelected: (value) => selectedPageNotifier.value = value,
           destinations: const [
             NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
             NavigationDestination(
-              icon: Icon(Icons.event_note_outlined),
+              icon: Icon(Icons.list_alt),
               label: 'Comming request',
             ),
-            NavigationDestination(
-              icon: Icon(Icons.work_history_rounded),
-              label: 'History',
-            ),
+            NavigationDestination(icon: Icon(Icons.history), label: 'History'),
           ],
         );
       },
