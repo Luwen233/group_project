@@ -20,12 +20,21 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
 
     void login() {
-      if (usernameController.text == "admin" &&
-          passwordController.text == "1234") { ///testing
+      if (usernameController.text == "staff" &&
+          passwordController.text == "1234") { ///testing staff
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (_) => const RoomApp(),
+          ), 
+        );
+      }
+      else if (usernameController.text == "lender" &&
+          passwordController.text == "1234") { ///testing lender
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const WidgetTree(),
           ), 
         );
       }
