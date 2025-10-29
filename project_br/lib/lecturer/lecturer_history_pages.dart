@@ -177,17 +177,16 @@ class _LecturerHistoryPagesState extends State<LecturerHistoryPages>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF7F7F7),
+        backgroundColor: Colors.white,
         elevation: 3,
         title: const Text(
           'Booking History',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(67),
+          preferredSize: const Size.fromHeight(50),
           child: Column(
             children: [
-              const Divider(thickness: 1, height: 0),
               TabBar(
                 controller: _tabController,
                 labelColor: const Color(0xff3C9CBF),
