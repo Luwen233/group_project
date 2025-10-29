@@ -117,7 +117,7 @@ class HomePage extends StatelessWidget {
         bottom: 20,
       ),
       decoration: BoxDecoration(
-        color: Colors.blue.shade500, // Header background color
+        color: Color(0xff3C9CBF), // Header background color
         borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(30),
           bottomRight: Radius.circular(30),
