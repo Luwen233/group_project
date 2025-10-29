@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:project_br/lecturer/lecturer_history_pages.dart';
 import 'package:project_br/lecturer/lecturer_home_pages.dart';
 import 'package:project_br/lecturer/lecturer_request_pages.dart';
-import 'package:project_br/lecturer/lecturer_notifiers.dart';
+import 'package:project_br/lecturer/booking_notifiers.dart';
 import 'package:project_br/lecturer/lecturer_navbar_widget.dart';
 
 class LecturerWidgetTree extends StatelessWidget {
@@ -10,7 +10,8 @@ class LecturerWidgetTree extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pages = const [
+    // ⭐️ เพิ่ม <Widget> ตรงนี้ เพื่อระบุประเภทของ List ให้ชัดเจน
+    final pages = const <Widget>[
       LecturerHomePages(),
       LecturerRequestPages(),
       LecturerHistoryPages(),

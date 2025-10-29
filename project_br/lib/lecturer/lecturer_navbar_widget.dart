@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:project_br/lecturer/lecturer_notifiers.dart';
+import 'package:project_br/lecturer/booking_notifiers.dart';
 
 class LecturerNavbarWidget extends StatelessWidget {
   const LecturerNavbarWidget({super.key});
@@ -17,7 +17,7 @@ class LecturerNavbarWidget extends StatelessWidget {
             NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
             NavigationDestination(
               icon: Icon(Icons.list_alt),
-              label: 'Requests',
+              label: 'Comming request',
             ),
             NavigationDestination(icon: Icon(Icons.history), label: 'History'),
           ],
