@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:project_br/notifiers.dart';
-import 'package:project_br/student_booking_pages.dart';
-import 'package:project_br/student_history_pages.dart';
-import 'package:project_br/student_home_pages.dart';
+import 'package:project_br/student/notifiers.dart';
+import 'package:project_br/student/student_booking_pages.dart';
+import 'package:project_br/student/student_history_pages.dart';
+import 'package:project_br/student/student_home_pages.dart';
 import 'student_navbar_widget.dart';
 
 class WidgetTree extends StatelessWidget {
