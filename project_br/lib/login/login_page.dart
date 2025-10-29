@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:project_br/login/signup_page.dart';
-import 'package:project_br/widget/widget_tree.dart';
+import 'package:project_br/staff/pages/linkpage.dart';
+import 'package:project_br/student/widget_tree.dart';
+import 'package:project_br/lecturer/lecturer_widget_tree.dart';
 
 
 class LoginPage extends StatefulWidget {
@@ -19,7 +21,25 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
 
     void login() {
-      if (usernameController.text == "admin" &&
+      if (usernameController.text == "staff" &&
+          passwordController.text == "1234") { ///testing staff
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const RoomApp(),
+          ), 
+        );
+      }
+      else if (usernameController.text == "lender" &&
+          passwordController.text == "1234") { ///testing lender
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const LecturerWidgetTree(),
+          ), 
+        );
+      }
+      else if (usernameController.text == "student" &&
           passwordController.text == "1234") { ///testing
         Navigator.pushReplacement(
           context,

@@ -1,95 +1,226 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:project_br/login/login_page.dart';
 import 'package:project_br/staff/pages/widgets/room_card.dart';
 import 'package:project_br/staff/pages/edit_room_page.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
-  // Navigation function for the edit button on RoomCard
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final _searchBox = TextEditingController();
+
+  final List<Map<String, String>> _rooms = [
+    {
+      "name": "Study Room",
+      "img": "assets/images/room1.jpg",
+      "description": "A quiet place for study.",
+      "quantity": "5",
+    },
+    {
+      "name": "Law Study Room",
+      "img": "assets/images/room2.jpg",
+      "description": "Exclusive room for law students.",
+      "quantity": "5",
+    },
+    {
+      "name": "Meeting Room",
+      "img": "assets/images/room3.jpg",
+      "description": "Large space for group meetings.",
+      "quantity": "5",
+    },
+    {
+      "name": "Math Study Room",
+      "img": "assets/images/room4.jpg",
+      "description": "For mathematics and engineering students.",
+      "quantity": "5",
+    },
+    {
+      "name": "Music Study Room",
+      "img": "assets/images/room4.jpg",
+      "description": "For Musical and engineering students.",
+      "quantity": "1",
+    },
+  ];
+
+  List<Map<String, String>> _filteredRooms() {
+    final query = _searchBox.text.trim().toLowerCase();
+    if (query.isEmpty) return _rooms;
+    return _rooms.where((room) {
+      return room["name"]!.toLowerCase().contains(query) ||
+          room["description"]!.toLowerCase().contains(query);
+    }).toList();
+  }
+
   void navigateToEditRoom(BuildContext context, Map<String, String> roomData) {
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => EditRoomPage(roomData: roomData),
-      ),
+      MaterialPageRoute(builder: (context) => EditRoomPage(roomData: roomData)),
     );
   }
 
   @override
+  void dispose() {
+    _searchBox.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Mock data for the room grid
-    final rooms = [
-      {
-        "name": "Study Room",
-        "img": "assets/images/room1.jpg",
-        "description": "A quiet place for study.",
-        "quantity": "5",
-      },
-      {
-        "name": "Law Study Room",
-        "img": "assets/images/room2.jpg",
-        "description": "Exclusive room for law students.",
-        "quantity": "5",
-      },
-      {
-        "name": "Meeting Room",
-        "img": "assets/images/room3.jpg",
-        "description": "Large space for group meetings.",
-        "quantity": "5",
-      },
-      {
-        "name": "Math Study Room",
-        "img": "assets/images/room4.jpg",
-        "description": "For mathematics and engineering students.",
-        "quantity": "5",
-      },
-    ];
+    final String formattedDate = DateFormat('MMM d, y').format(DateTime.now());
 
     return Scaffold(
-      // The body is now a Column to stack the header, stats, and grid
-      body: Column(
-        children: [
-          // 1. Custom Header
-          _buildHeader(context),
+      endDrawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            const UserAccountsDrawerHeader(
+              accountName: Text(
+                'Staff Jeff',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              accountEmail: null,
+              currentAccountPicture: CircleAvatar(
+                backgroundColor: Colors.white,
+                child: Icon(Icons.person, color: Colors.black, size: 40),
+              ),
+              decoration: BoxDecoration(color: Color(0xFF3C9CBF)),
+            ),
+            ListTile(
+              leading: const Icon(Icons.logout),
+              title: const Text('Logout'),
+              onTap: () {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (context) => const LoginPage()),
+                  (Route<dynamic> route) => false,
+                );
+              },
+            ),
+          ],
+        ),
+      ),
 
-          // 2. Statistics Cards
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _StatCard(
-                    icon: Icons.meeting_room, // Using a standard icon
-                    color: Colors.black54,
-                    value: "20",
-                    label: "Total Rooms"),
-                _StatCard(
-                    icon: Icons.check_circle,
-                    color: Colors.green,
-                    value: "10",
-                    label: "Free Slots"),
-                _StatCard(
-                    icon: Icons.calendar_month,
-                    color: Colors.blue,
-                    value: "5",
-                    label: "Reserved Slots"),
-                _StatCard(
-                    icon: Icons.hourglass_bottom,
-                    color: Colors.orange.shade800,
-                    value: "1",
-                    label: "Pending Slots"),
-              ],
+      // Main body
+      body: CustomScrollView(
+        slivers: [
+          // Header
+          SliverAppBar(
+            backgroundColor: const Color(0xFF3C9CBF),
+            expandedHeight: 200,
+            pinned: true,
+            floating: true,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(40)),
+            ),
+            actions: [
+              Builder(
+                builder: (context) => IconButton(
+                  icon: const Icon(Icons.menu, color: Colors.black, size: 30),
+                  onPressed: () => Scaffold.of(context).openEndDrawer(),
+                ),
+              ),
+            ],
+            flexibleSpace: FlexibleSpaceBar(
+              background: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        height: 40,
+                        width: 160,
+                        decoration: BoxDecoration(
+                          color: const Color.fromARGB(80, 33, 33, 40),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          formattedDate,
+                          style: const TextStyle(color: Colors.white, fontSize: 20),
+                        ),
+                      ),
+                      const SizedBox(height: 80),
+                      Container(
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(17),
+                        ),
+                        child: TextField(
+                          controller: _searchBox,
+                          onChanged: (_) => setState(() {}),
+                          decoration: const InputDecoration(
+                            hintText: 'Search Room',
+                            border: InputBorder.none,
+                            suffixIcon: Icon(Icons.search),
+                            contentPadding: EdgeInsets.all(14),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
 
-          // 3. Room Grid
-          Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+          // Statistic Section
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: const [
+                  _StatCard(
+                    icon: Icons.check_circle,
+                    color: Colors.green,
+                    value: "14",
+                    label: "Free Slots",
+                  ),
+                  _StatCard(
+                    icon: Icons.calendar_month,
+                    color: Colors.blue,
+                    value: "10",
+                    label: "Reserved Slots",
+                  ),
+                  _StatCard(
+                    icon: Icons.hourglass_bottom,
+                    color: Colors.orange,
+                    value: "5",
+                    label: "Pending Slots",
+                  ),
+                  _StatCard(
+                    icon: Icons.lock,
+                    color: Colors.red,
+                    value: "1",
+                    label: "Disable Slots",
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // GridView of RoomCards
+          SliverPadding(
+            padding: const EdgeInsets.all(12),
+            sliver: SliverGrid.builder(
+              itemCount: _filteredRooms().length,
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2, crossAxisSpacing: 8, mainAxisSpacing: 8),
-              itemCount: rooms.length,
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 16,
+                childAspectRatio: 3 / 3.7,
+              ),
               itemBuilder: (context, index) {
-                final room = rooms[index];
+                final room = _filteredRooms()[index];
                 return RoomCard(
                   title: room["name"]!,
                   imagePath: room["img"]!,
@@ -103,98 +234,8 @@ class HomePage extends StatelessWidget {
       ),
     );
   }
-
-  /// Builds the custom blue header widget
-  Widget _buildHeader(BuildContext context) {
-    // Get status bar height for safe area padding
-    final double statusBarHeight = MediaQuery.of(context).padding.top;
-
-    return Container(
-      padding: EdgeInsets.only(
-        top: statusBarHeight + 16,
-        left: 16,
-        right: 16,
-        bottom: 20,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.blue.shade500, // Header background color
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
-      ),
-      child: Column(
-        children: [
-          // Top Row: Date and Staff Dropdown
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                "Sep 20, 2025",
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600),
-              ),
-              // Staff Logout Dropdown Button
-              PopupMenuButton<String>(
-                onSelected: (value) {
-                  if (value == 'logout') {
-                    // --- Handle Logout ---
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Staff logged out")),
-                    );
-                    // In a real app, navigate to login screen:
-                    // Navigator.of(context).pushReplacementNamed('/login');
-                  }
-                },
-                // This is the menu that appears on tap
-                itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                  const PopupMenuItem<String>(
-                    value: 'logout',
-                    child: Text('Logout'),
-                  ),
-                ],
-                offset: const Offset(0, 40),
-                // This is the widget that is tapped
-                child: Row(
-                  children: const [
-                    Icon(Icons.person, color: Colors.white, size: 24),
-                    SizedBox(width: 4),
-                    Text(
-                      "Staff jeff",
-                      style: TextStyle(color: Colors.white, fontSize: 18),
-                    ),
-                    Icon(Icons.keyboard_arrow_down,
-                        color: Colors.white, size: 24),
-                  ],
-                ), // Position the menu
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          // Search Bar
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const TextField(
-              decoration: InputDecoration(
-                hintText: "Study Room",
-                border: InputBorder.none, // Removes underline
-                suffixIcon: Icon(Icons.search, color: Colors.grey),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
-/// Helper Widget for the four white statistic boxes
 class _StatCard extends StatelessWidget {
   final IconData icon;
   final String value;
@@ -210,7 +251,6 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Expanded to make all cards share width equally
     return Expanded(
       child: Card(
         elevation: 2,
@@ -231,11 +271,8 @@ class _StatCard extends StatelessWidget {
               ),
               Text(
                 label,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Colors.black54,
-                ),
-                overflow: TextOverflow.ellipsis, // Prevents overflow
+                style: const TextStyle(fontSize: 12, color: Colors.black54),
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),

@@ -3,6 +3,7 @@ import 'package:project_br/login/login_page.dart';
 import 'package:project_br/student/student_room_detail_pages.dart';
 import 'package:intl/intl.dart';
 
+
 class StudentHomePages extends StatefulWidget {
   const StudentHomePages({super.key});
 
@@ -108,7 +109,7 @@ class _StudentHomePagesState extends State<StudentHomePages> {
         slivers: <Widget>[
           SliverAppBar(
             backgroundColor: Color(0xFF3C9CBF),
-            expandedHeight: 284.0,
+            expandedHeight: 214.0,
             pinned: true,
             floating: true,
             shape: RoundedRectangleBorder(
@@ -138,7 +139,7 @@ class _StudentHomePagesState extends State<StudentHomePages> {
                         ),
                       ),
 
-                      const SizedBox(height: 150),
+                      const SizedBox(height: 80),
 
                       Container(
                         height: 50,

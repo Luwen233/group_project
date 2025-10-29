@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:project_br/lecturer/lecturer_widget_tree.dart';
 import 'package:project_br/login/login_page.dart';
 import 'package:project_br/login/signup_page.dart';
-import 'package:project_br/widget/widget_tree.dart';
-
+import 'package:project_br/student/widget_tree.dart';
 
 void main() {
   runApp(const MyApp());
@@ -23,6 +23,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/login': (_) => const LoginPage(),
         '/signup': (_) => const SignUpPage(),
+        '/homelecturer': (_) => const LecturerWidgetTree(),
         '/home': (_) => const WidgetTree(),
       },
     );
