@@ -34,7 +34,7 @@ class DashboardSummary extends StatelessWidget {
        const SizedBox(width: 8), // ลดช่องว่าง
        Expanded(
          child: _buildSummaryCard(
-           Icons.calendar_today,
+           Icons.calendar_month,
            Colors.blue,
            reservedSlots,
            "Reserved Slots",
