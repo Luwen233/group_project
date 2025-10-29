@@ -4,8 +4,57 @@ import 'package:project_br/login/login_page.dart';
 import 'package:project_br/staff/pages/widgets/room_card.dart';
 import 'package:project_br/staff/pages/edit_room_page.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final _searchBox = TextEditingController();
+
+  final List<Map<String, String>> _rooms = [
+    {
+      "name": "Study Room",
+      "img": "assets/images/room1.jpg",
+      "description": "A quiet place for study.",
+      "quantity": "5",
+    },
+    {
+      "name": "Law Study Room",
+      "img": "assets/images/room2.jpg",
+      "description": "Exclusive room for law students.",
+      "quantity": "5",
+    },
+    {
+      "name": "Meeting Room",
+      "img": "assets/images/room3.jpg",
+      "description": "Large space for group meetings.",
+      "quantity": "5",
+    },
+    {
+      "name": "Math Study Room",
+      "img": "assets/images/room4.jpg",
+      "description": "For mathematics and engineering students.",
+      "quantity": "5",
+    },
+    {
+      "name": "Music Study Room",
+      "img": "assets/images/room4.jpg",
+      "description": "For Musical and engineering students.",
+      "quantity": "1",
+    },
+  ];
+
+  List<Map<String, String>> _filteredRooms() {
+    final query = _searchBox.text.trim().toLowerCase();
+    if (query.isEmpty) return _rooms;
+    return _rooms.where((room) {
+      return room["name"]!.toLowerCase().contains(query) ||
+          room["description"]!.toLowerCase().contains(query);
+    }).toList();
+  }
 
   void navigateToEditRoom(BuildContext context, Map<String, String> roomData) {
     Navigator.of(context).push(
@@ -14,42 +63,14 @@ class HomePage extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final rooms = [
-      {
-        "name": "Study Room",
-        "img": "assets/images/room1.jpg",
-        "description": "A quiet place for study.",
-        "quantity": "5",
-      },
-      {
-        "name": "Law Study Room",
-        "img": "assets/images/room2.jpg",
-        "description": "Exclusive room for law students.",
-        "quantity": "5",
-      },
-      {
-        "name": "Meeting Room",
-        "img": "assets/images/room3.jpg",
-        "description": "Large space for group meetings.",
-        "quantity": "5",
-      },
-      {
-        "name": "Math Study Room",
-        "img": "assets/images/room4.jpg",
-        "description": "For mathematics and engineering students.",
-        "quantity": "5",
-      },
-      {
-        "name": "Music Study Room",
-        "img": "assets/images/room4.jpg",
-        "description": "For Musical and engineering students.",
-        "quantity": "1",
-      },
-    ];
+  void dispose() {
+    _searchBox.dispose();
+    super.dispose();
+  }
 
-    final DateTime now = DateTime.now();
-    final String formattedDate = DateFormat('MMM d, y').format(now);
+  @override
+  Widget build(BuildContext context) {
+    final String formattedDate = DateFormat('MMM d, y').format(DateTime.now());
 
     return Scaffold(
       endDrawer: Drawer(
@@ -86,53 +107,120 @@ class HomePage extends StatelessWidget {
         ),
       ),
 
-      // Body layout
-      body: Column(
-        children: [
-          _buildHeader(context, formattedDate),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _StatCard(
-                  icon: Icons.check_circle,
-                  color: Colors.green,
-                  value: "14",
-                  label: "Free Slots",
+      // Main body
+      body: CustomScrollView(
+        slivers: [
+          // Header
+          SliverAppBar(
+            backgroundColor: const Color(0xFF3C9CBF),
+            expandedHeight: 200,
+            pinned: true,
+            floating: true,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(40)),
+            ),
+            actions: [
+              Builder(
+                builder: (context) => IconButton(
+                  icon: const Icon(Icons.menu, color: Colors.black, size: 30),
+                  onPressed: () => Scaffold.of(context).openEndDrawer(),
                 ),
-                _StatCard(
-                  icon: Icons.calendar_month,
-                  color: Colors.blue,
-                  value: "10",
-                  label: "Reserved Slots",
+              ),
+            ],
+            flexibleSpace: FlexibleSpaceBar(
+              background: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        height: 40,
+                        width: 160,
+                        decoration: BoxDecoration(
+                          color: const Color.fromARGB(80, 33, 33, 40),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          formattedDate,
+                          style: const TextStyle(color: Colors.white, fontSize: 20),
+                        ),
+                      ),
+                      const SizedBox(height: 80),
+                      Container(
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(17),
+                        ),
+                        child: TextField(
+                          controller: _searchBox,
+                          onChanged: (_) => setState(() {}),
+                          decoration: const InputDecoration(
+                            hintText: 'Search Room',
+                            border: InputBorder.none,
+                            suffixIcon: Icon(Icons.search),
+                            contentPadding: EdgeInsets.all(14),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                _StatCard(
-                  icon: Icons.hourglass_bottom,
-                  color: Colors.orange.shade800,
-                  value: "5",
-                  label: "Pending Slots",
-                ),
-                _StatCard(
-                  icon: Icons.lock,
-                  color: Colors.red,
-                  value: "1",
-                  label: "Disable Slots",
-                ),
-              ],
+              ),
             ),
           ),
-          Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+
+          // Statistic Section
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: const [
+                  _StatCard(
+                    icon: Icons.check_circle,
+                    color: Colors.green,
+                    value: "14",
+                    label: "Free Slots",
+                  ),
+                  _StatCard(
+                    icon: Icons.calendar_month,
+                    color: Colors.blue,
+                    value: "10",
+                    label: "Reserved Slots",
+                  ),
+                  _StatCard(
+                    icon: Icons.hourglass_bottom,
+                    color: Colors.orange,
+                    value: "5",
+                    label: "Pending Slots",
+                  ),
+                  _StatCard(
+                    icon: Icons.lock,
+                    color: Colors.red,
+                    value: "1",
+                    label: "Disable Slots",
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // GridView of RoomCards
+          SliverPadding(
+            padding: const EdgeInsets.all(12),
+            sliver: SliverGrid.builder(
+              itemCount: _filteredRooms().length,
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 16,
+                childAspectRatio: 3 / 3.7,
               ),
-              itemCount: rooms.length,
               itemBuilder: (context, index) {
-                final room = rooms[index];
+                final room = _filteredRooms()[index];
                 return RoomCard(
                   title: room["name"]!,
                   imagePath: room["img"]!,
@@ -140,45 +228,6 @@ class HomePage extends StatelessWidget {
                   onEdit: () => navigateToEditRoom(context, room),
                 );
               },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context, String formattedDate) {
-    final double statusBarHeight = MediaQuery.of(context).padding.top;
-
-    return Container(
-      padding: EdgeInsets.only(
-        top: statusBarHeight + 16,
-        left: 16,
-        right: 16,
-        bottom: 20,
-      ),
-      decoration: const BoxDecoration(
-        color: Color(0xff3C9CBF),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            formattedDate,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          Builder(
-            builder: (context) => GestureDetector(
-              onTap: () => Scaffold.of(context).openEndDrawer(),
-              child: const Icon(Icons.menu, color: Colors.white, size: 26),
             ),
           ),
         ],
