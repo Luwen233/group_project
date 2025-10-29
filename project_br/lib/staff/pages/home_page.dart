@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:project_br/login/login_page.dart';
 import 'package:project_br/staff/pages/widgets/room_card.dart';
 import 'package:project_br/staff/pages/edit_room_page.dart';
@@ -47,6 +48,9 @@ class HomePage extends StatelessWidget {
       },
     ];
 
+    final DateTime now = DateTime.now();
+    final String formattedDate = DateFormat('MMM d, y').format(now);
+
     return Scaffold(
       endDrawer: Drawer(
         child: ListView(
@@ -85,7 +89,7 @@ class HomePage extends StatelessWidget {
       // Body layout
       body: Column(
         children: [
-          _buildHeader(context),
+          _buildHeader(context, formattedDate),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             child: Row(
@@ -143,7 +147,7 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, String formattedDate) {
     final double statusBarHeight = MediaQuery.of(context).padding.top;
 
     return Container(
@@ -163,9 +167,9 @@ class HomePage extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
-            "Sep 20, 2025",
-            style: TextStyle(
+          Text(
+            formattedDate,
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -174,11 +178,7 @@ class HomePage extends StatelessWidget {
           Builder(
             builder: (context) => GestureDetector(
               onTap: () => Scaffold.of(context).openEndDrawer(),
-              child: Row(
-                children: const [
-                  Icon(Icons.menu, color: Colors.white, size: 26),
-                ],
-              ),
+              child: const Icon(Icons.menu, color: Colors.white, size: 26),
             ),
           ),
         ],
