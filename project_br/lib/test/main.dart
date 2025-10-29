@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:project_br/login/login_page.dart';
 import 'package:project_br/login/signup_page.dart';
-import 'package:project_br/widget_tree.dart';
+import 'package:project_br/student/widget_tree.dart';
 
 
 void main() {
