@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-// ⭐️ Imports ที่ถูกต้องสำหรับ Model และ State
 import 'package:project_br/lecturer/booking_model.dart';
 import 'package:project_br/lecturer/booking_notifiers.dart';
 
@@ -26,151 +25,146 @@ class _LecturerHistoryPagesState extends State<LecturerHistoryPages>
     super.dispose();
   }
 
-  // --- ฟังก์ชันสำหรับแสดง Dialog More Details (ปรับขนาด UI ให้เล็กลง) ---
-  void _showMoreDetailsDialog(BookingRequest request) {
-    final String decisionOn = request.approvedOn ?? request.rejectedOn ?? 'N/A';
-    final String processedBy = request.processedBy ?? 'System';
+  // --- ฟังก์ชันกรองสถานะ ---
+  List<BookingRequest> _getFilteredList(List<BookingRequest> all, String status) {
+    if (status == 'All') return all;
+    return all.where((b) => b.status.toLowerCase() == status.toLowerCase()).toList();
+  }
 
-    showDialog(
+  // --- ฟังก์ชันแสดง BottomSheet ---
+  void _showMoreDetailsSheet(BuildContext context, BookingRequest booking) {
+    final String status = booking.status.toLowerCase();
+    Color statusColor;
+    String statusActionText;
+
+    switch (status) {
+      case 'approved':
+        statusColor = const Color(0xff3BCB53);
+        statusActionText = 'Approved On';
+        break;
+      case 'rejected':
+        statusColor = const Color(0xffDB5151);
+        statusActionText = 'Rejected On';
+        break;
+      default:
+        statusColor = const Color(0xff4E534E);
+        statusActionText = 'Action Date';
+    }
+
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20.0), // โค้งมน
-          ),
-          child: SingleChildScrollView(
-            child: Container(
-              // ⭐️ ลด Padding รอบนอก (โดยเฉพาะด้านล่าง)
-              padding: const EdgeInsets.fromLTRB(
-                16,
-                16,
-                16,
-                12,
-              ), // <--- ปรับ Padding
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // --- รูปภาพห้อง ---
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12.0), // โค้งมน
-                    child: Image.asset(
-                      request.image,
-                      // ⭐️ ลดความสูงรูปภาพ
-                      height: 100, // <--- จาก 120
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          height: 100, // <--- จาก 120
-                          color: Colors.grey[300],
-                          child: Center(
-                            child: Icon(
-                              Icons.broken_image,
-                              color: Colors.grey[600],
-                              size: 30,
-                            ),
-                          ),
-                        ); // ลดขนาด icon
-                      },
-                    ),
-                  ),
-                  // ⭐️ ลดช่องว่างใต้รูป
-                  const SizedBox(height: 10), // <--- จาก 12
-                  // ------------------------
-                  Text(
-                    "Booking Details",
-                    // ⭐️ ลดขนาด Title
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ), // <--- จาก 18
-                  ),
-                  // ⭐️ ลดช่องว่างใต้ Title
-                  const SizedBox(height: 8), // <--- จาก 12
-                  _buildDetailRow("Request ID:", request.id),
-                  _buildDetailRow("Room Name:", request.roomName),
-                  _buildDetailRow("Date:", request.date),
-                  _buildDetailRow("Time:", request.time),
-                  _buildDetailRow("Booked By:", request.bookedBy),
-                  _buildDetailRow("Requested On:", request.requestedOn),
-                  Divider(
-                    height: 16,
-                    color: Colors.grey[300],
-                  ), // ⭐️ ลด height Divider
-                  _buildDetailRow(
-                    "Status:",
-                    request.status.toUpperCase(),
-                    valueColor: request.status == 'approved'
-                        ? Colors.green
-                        : Colors.red,
-                  ),
-                  // แสดง Approved/Rejected By & On
-                  if (request.status == 'approved') ...[
-                    _buildDetailRow(
-                      "Approved By:",
-                      request.approvedBy ?? processedBy,
-                    ),
-                    _buildDetailRow("Approved On:", decisionOn),
-                  ] else if (request.status == 'rejected') ...[
-                    _buildDetailRow("Rejected By:", processedBy),
-                    _buildDetailRow("Rejected On:", decisionOn),
-                    if (request.rejectReason != null &&
-                        request.rejectReason!.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(
-                          top: 4.0,
-                        ), // ⭐️ ลด Padding บน Note
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Note:",
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 13,
-                              ),
-                            ),
-                            Text(
-                              request.rejectReason!,
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
+        final String decisionOn = booking.approvedOn ?? booking.rejectedOn ?? 'N/A';
+        final String processedBy = booking.processedBy ?? 'System';
 
-                  // ⭐️ ลดช่องว่างก่อนปุ่ม OK
-                  const SizedBox(height: 16), // <--- จาก 20
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        // ⭐️ ลด Padding ปุ่ม OK
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 4,
-                        ), // <--- ปรับ Padding
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      // ⭐️ ลดขนาด Font ปุ่ม
-                      child: Text(
-                        "OK",
-                        style: TextStyle(color: Colors.white, fontSize: 13),
-                      ), // <--- จาก 14
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
+        return Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Request ID: ${booking.id}',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  booking.roomName,
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Date: ${booking.date}', style: TextStyle(color: Colors.grey[700])),
+                    Text('Time: ${booking.time}', style: TextStyle(color: Colors.grey[700])),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.asset(
+                    booking.image,
+                    height: 150,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stack) => Container(
+                      height: 150,
+                      color: Colors.grey[300],
+                      child: const Center(child: Icon(Icons.broken_image, size: 40)),
                     ),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildDetailItem('Booked By', booking.bookedBy),
+                          const SizedBox(height: 12),
+                          _buildDetailItem('Requested On', booking.requestedOn),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildDetailItem(
+                            status == 'approved' ? 'Approved By' : 'Rejected By',
+                            booking.approvedBy ?? processedBy,
+                          ),
+                          const SizedBox(height: 12),
+                          _buildDetailItem(statusActionText, decisionOn),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                if (status == 'rejected' && booking.rejectReason != null)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Lecturer Note',
+                          style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+                      const SizedBox(height: 4),
+                      Text(booking.rejectReason!,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                    ],
+                  ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xff3BCB53),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Text(
+                      'OK',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         );
@@ -178,401 +172,205 @@ class _LecturerHistoryPagesState extends State<LecturerHistoryPages>
     );
   }
 
-  // --- Widget ช่วยสร้างแถว Detail ใน Dialog (ปรับ Font Size และ Padding) ---
-  Widget _buildDetailRow(String title, String value, {Color? valueColor}) {
-    return Padding(
-      // ⭐️ ลด Padding แนวตั้งเล็กน้อย
-      padding: const EdgeInsets.symmetric(vertical: 2.0), // <--- จาก 3.0
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ⭐️ ลดขนาด Font Title
-          Text(
-            "$title ",
-            style: TextStyle(color: Colors.grey[600], fontSize: 13),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              // ⭐️ ลดขนาด Font Value
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: valueColor,
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
+  // --- Widget หลัก ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: Text(
-          "History",
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        backgroundColor: const Color(0xFFF7F7F7),
+        elevation: 3,
+        title: const Text(
+          'Booking History',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0,
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: Colors.blue,
-          unselectedLabelColor: Colors.grey[400],
-          indicatorColor: Colors.blue,
-          indicatorWeight: 3,
-          labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal),
-          tabs: const [
-            Tab(text: "All"),
-            Tab(text: "Approved"),
-            Tab(text: "Rejected"),
-          ],
-        ),
-      ),
-      body: Column(
-        children: [
-          Container(height: 1, color: Colors.grey[300]),
-          Expanded(
-            child: ValueListenableBuilder<List<BookingRequest>>(
-              valueListenable: historyRequestsNotifier,
-              builder: (context, historyList, _) {
-                return TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildHistoryList(historyList, context),
-                    _buildHistoryList(
-                      historyList
-                          .where((req) => req.status == 'approved')
-                          .toList(),
-                      context,
-                    ),
-                    _buildHistoryList(
-                      historyList
-                          .where((req) => req.status == 'rejected')
-                          .toList(),
-                      context,
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHistoryList(List<BookingRequest> list, BuildContext context) {
-    if (list.isEmpty) {
-      return _buildEmptyHistoryState();
-    } else {
-      return ListView.builder(
-        padding: const EdgeInsets.only(top: 8, bottom: 16),
-        itemCount: list.length,
-        itemBuilder: (context, index) {
-          final request = list[index];
-          return _buildHistoryCard(request, context);
-        },
-      );
-    }
-  }
-
-  Widget _buildEmptyHistoryState() {
-    return Center(
-      child: Container(
-        margin: const EdgeInsets.symmetric(
-          horizontal: 16,
-        ), // Add margin for empty state
-        padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 32),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12), // Match card radius
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(13),
-              blurRadius: 8,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.history_toggle_off, size: 64, color: Colors.grey[300]),
-            const SizedBox(height: 24),
-            Text(
-              "No history yet",
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[800],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              "Approved or rejected requests\nwill appear here",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 15,
-                color: Colors.grey[600],
-                height: 1.5,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // --- Widget สร้าง Column แสดง Title และ Value ---
-  Widget _buildDetailColumn(String title, String value) {
-    // ใช้ Expanded เพื่อให้ Column แต่ละอันมีความกว้างเท่าๆ กันใน Row
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
-          Text(
-            value,
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1, // Ensure value stays on one line
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- Widget สำหรับ History Card (UI ใหม่) ---
-  Widget _buildHistoryCard(BookingRequest request, BuildContext context) {
-    final bool isRejected = request.status == 'rejected';
-    final Color statusColor = isRejected ? Colors.red : Colors.green;
-    final String statusText = isRejected ? 'Rejected' : 'Approved';
-    // ใช้ approvedOn / rejectedOn จาก Model โดยตรง
-    final String decisionOn = request.approvedOn ?? request.rejectedOn ?? 'N/A';
-    // ⭐️ ใช้ processedBy สำหรับ Approved By / Rejected By ใน Card
-    final String processedBy = request.processedBy ?? 'System';
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12), // โค้งมน
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(13),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // --- ส่วนบน: Request ID, Room Name, Date, Time ---
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(67),
+          child: Column(
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Request ID : ${request.id}",
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      request.roomName,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    "Date: ${request.date}",
-                    style: TextStyle(fontSize: 12, color: Colors.grey[800]),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    "Time: ${request.time}",
-                    style: TextStyle(fontSize: 12, color: Colors.grey[800]),
-                  ),
+              const Divider(thickness: 1, height: 0),
+              TabBar(
+                controller: _tabController,
+                labelColor: const Color(0xff3C9CBF),
+                unselectedLabelColor: const Color(0xff4E534E),
+                indicatorColor: const Color(0xff3C9CBF),
+                tabs: const [
+                  Tab(text: 'All'),
+                  Tab(text: 'Approved'),
+                  Tab(text: 'Rejected'),
                 ],
               ),
             ],
           ),
-          Divider(height: 24, color: Colors.grey[200]),
-
-          // --- ส่วนกลาง: รูปภาพ, Booked By/ApprovedBy, RequestedOn/ApprovedOn ---
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        ),
+      ),
+      body: ValueListenableBuilder<List<BookingRequest>>(
+        valueListenable: historyRequestsNotifier,
+        builder: (context, allBookings, _) {
+          return TabBarView(
+            controller: _tabController,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8), // โค้งมนเล็กน้อย
-                child: Image.asset(
-                  request.image,
-                  width: 80,
-                  height: 80,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      width: 80,
-                      height: 80,
-                      color: Colors.grey[300],
-                      child: Center(
-                        child: Icon(
-                          Icons.broken_image,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                // ⭐️ ใช้ Column ครอบ Row ทั้งสองแถว
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // --- ⭐️ Row 1: Booked By | Approved/Rejected By ---
-                    Row(
-                      children: [
-                        _buildDetailColumn("Booked By:", request.bookedBy),
-                        const SizedBox(width: 16), // ⭐️ ช่องว่าง
-                        if (request.status == 'approved')
-                          _buildDetailColumn(
-                            "Approved By:",
-                            request.approvedBy ?? processedBy,
-                          )
-                        else if (request.status == 'rejected')
-                          _buildDetailColumn("Rejected By:", processedBy)
-                        else // Handle cases where status might not be set or is pending (though unlikely in history)
-                          Expanded(
-                            child: Container(),
-                          ), // Add an empty expanded widget to maintain layout
-                      ],
-                    ),
-                    const SizedBox(height: 6), // ⭐️ ระยะห่างระหว่าง Row
-                    // --- ⭐️ Row 2: Requested On | Approved/Rejected On ---
-                    Row(
-                      children: [
-                        _buildDetailColumn(
-                          "Requested On:",
-                          request.requestedOn,
-                        ),
-                        const SizedBox(width: 16), // ⭐️ ช่องว่าง
-                        if (request.status == 'approved')
-                          _buildDetailColumn("Approved On:", decisionOn)
-                        else if (request.status == 'rejected')
-                          _buildDetailColumn("Rejected On:", decisionOn)
-                        else // Handle cases where status might not be set or is pending (though unlikely in history)
-                          Expanded(
-                            child: Container(),
-                          ), // Add an empty expanded widget to maintain layout
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+              _buildHistoryList(_getFilteredList(allBookings, 'All')),
+              _buildHistoryList(_getFilteredList(allBookings, 'approved')),
+              _buildHistoryList(_getFilteredList(allBookings, 'rejected')),
             ],
-          ),
+          );
+        },
+      ),
+    );
+  }
 
-          // --- ส่วนล่าง: ปุ่มสถานะ และ ปุ่ม More ---
+  // --- สร้าง List ของประวัติการจอง ---
+  Widget _buildHistoryList(List<BookingRequest> list) {
+    if (list.isEmpty) {
+      return _buildEmptyState();
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(20),
+      itemCount: list.length,
+      itemBuilder: (context, index) {
+        final booking = list[index];
+        return _buildHistoryCard(booking);
+      },
+    );
+  }
+
+  // --- Empty State ---
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.history_toggle_off, size: 60, color: Colors.grey[400]),
           const SizedBox(height: 16),
-          // ⭐️ ใช้ Row และ Expanded เพื่อแบ่งพื้นที่ปุ่มเท่าๆ กัน
-          Row(
-            children: [
-              // ⭐️ ปุ่ม Status (ซ้าย)
-              Expanded(
-                // <--- เปลี่ยนจาก Flexible เป็น Expanded
-                child: SizedBox(
-                  // ⭐️ ลดความสูงของ SizedBox
-                  height: 25,
-                  child: ElevatedButton(
-                    onPressed: () {}, // ทำให้กดไม่ได้
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: statusColor,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 20,
-                      ), // อาจจะปรับ padding
-                      minimumSize: Size(0, 40), // ⭐️ ลด minimumSize height
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(
-                          10,
-                        ), // ⭐️ เหมือนปุ่ม Approve/Reject
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        statusText,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14, // ⭐️ ปรับขนาดให้เท่าปุ่ม More
-                        ),
-                        overflow: TextOverflow.ellipsis, // ป้องกันข้อความล้น
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16), // ⭐️ ช่องว่างเหมือนหน้า Request
-              // ⭐️ ปุ่ม More (ขวา)
-              Expanded(
-                // <--- เปลี่ยนจาก Flexible เป็น Expanded
-                child: SizedBox(
-                  // ⭐️ ลดความสูงของ SizedBox
-                  height: 25,
-                  child: ElevatedButton(
-                    onPressed: () => _showMoreDetailsDialog(request),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey[600],
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 20,
-                      ), // อาจจะปรับ padding
-                      minimumSize: Size(0, 40), // ⭐️ ลด minimumSize height
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(
-                          10,
-                        ), // ⭐️ เหมือนปุ่ม Approve/Reject
-                      ),
-                    ),
-                    child: Text(
-                      'More', // ⭐️ เพิ่ม ...
-                      style: TextStyle(
-                        fontSize: 14, // ⭐️ ปรับขนาดให้เท่าปุ่ม Status
-                        fontWeight: FontWeight.w600,
-                      ),
-                      overflow: TextOverflow.ellipsis, // ป้องกันข้อความล้น
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          const Text(
+            'No booking history yet.',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.black54,
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  // --- Card ---
+  Widget _buildHistoryCard(BookingRequest booking) {
+    final bool isRejected = booking.status == 'rejected';
+    final Color statusColor = isRejected ? const Color(0xffDB5151) : const Color(0xff3BCB53);
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            child: Text(
+              booking.roomName,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ),
+          ClipRRect(
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(0),
+              topRight: Radius.circular(0),
+            ),
+            child: Image.asset(
+              booking.image,
+              height: 120,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stack) => Container(
+                height: 120,
+                color: Colors.grey[300],
+                child: const Center(child: Icon(Icons.broken_image, size: 40)),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildDetailItem('Booked By', booking.bookedBy),
+                _buildDetailItem(
+                  isRejected ? 'Rejected On' : 'Approved On',
+                  booking.approvedOn ?? booking.rejectedOn ?? 'N/A',
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      color: statusColor,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Text(
+                        booking.status.toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _showMoreDetailsSheet(context, booking),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      side: BorderSide(color: Colors.grey[400]!),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'More',
+                      style: TextStyle(
+                        color: Colors.black54,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- Item Detail Text ---
+  Widget _buildDetailItem(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 }
