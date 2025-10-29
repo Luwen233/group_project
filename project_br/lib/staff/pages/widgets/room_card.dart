@@ -29,8 +29,9 @@ class RoomCard extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
+              ClipRRect(
                 child: Image.asset(imagePath,
+                height: 120,
                     fit: BoxFit.cover, width: double.infinity),
               ),
               Padding(

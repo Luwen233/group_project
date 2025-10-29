@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:project_br/login/login_page.dart';
 
 class StudentHomePages extends StatefulWidget {
   const StudentHomePages({super.key});
@@ -32,7 +33,7 @@ class _StudentHomePagesState extends State<StudentHomePages> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Color(0xFF3C9CBF),
-        toolbarHeight: 284,
+        toolbarHeight: 214,
         centerTitle: false,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(40)),
@@ -63,18 +64,58 @@ class _StudentHomePagesState extends State<StudentHomePages> {
 
                     Row(
                       children: [
-                        Icon(Icons.person, color: Colors.black, size: 40),
-                        SizedBox(width: 6),
-                        Text(
-                          'Mr. John',
-                          style: TextStyle(color: Colors.black, fontSize: 16),
+                        PopupMenuButton<String>(
+                onSelected: (value) {
+                  if (value == 'logout') {
+                    // --- Handle Logout ---
+                    // ScaffoldMessenger.of(context).showSnackBar(
+                    //   const SnackBar(content: Text("Staff logged out")),
+                    // );
+                    // In a real app, navigate to login screen:
+                    Navigator.pushNamedAndRemoveUntil(
+                      context,
+                      '/login',
+                      (route) => false,
+                      arguments: Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const LoginPage(),
                         ),
+                      ),
+                    );
+                  }
+                },
+                // This is the menu that appears on tap
+                itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                  const PopupMenuItem<String>(
+                    value: 'logout',
+                    child: Text('Logout'),
+                  ),
+                ],
+                offset: const Offset(0, 40),
+                // This is the widget that is tapped
+                child: Row(
+                  children: const [
+                    Icon(Icons.person, color: Colors.white, size: 24),
+                    SizedBox(width: 4),
+                    Text(
+                      "Mr. John",
+                      style: TextStyle(color: Colors.white, fontSize: 18),
+                    ),
+                    Icon(
+                      Icons.keyboard_arrow_down,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ],
+                ), // Position the menu
+              ),
                       ],
                     ),
                   ],
                 ),
 
-                const SizedBox(height: 150),
+                const SizedBox(height: 80),
                 Container(
                   height: 50,
                   decoration: BoxDecoration(
