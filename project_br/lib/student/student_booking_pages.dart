@@ -1,11 +1,8 @@
-<<<<<<< HEAD
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-=======
 import 'package:flutter/material.dart';
 import 'package:project_br/student/booking_service.dart';
->>>>>>> 6d7bcbed0d2345c1b42f0ee7840d51c966533257
 
 class StudentBookingPages extends StatefulWidget {
   const StudentBookingPages({super.key});
@@ -15,8 +12,6 @@ class StudentBookingPages extends StatefulWidget {
 }
 
 class _StudentBookingPagesState extends State<StudentBookingPages> {
-<<<<<<< HEAD
-=======
   List<Map<String, dynamic>> _pendingBookings = [];
 
   @override
@@ -86,7 +81,6 @@ class _StudentBookingPagesState extends State<StudentBookingPages> {
     );
   }
 
->>>>>>> 6d7bcbed0d2345c1b42f0ee7840d51c966533257
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -103,11 +97,7 @@ class _StudentBookingPagesState extends State<StudentBookingPages> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-<<<<<<< HEAD
-              Divider(thickness: sqrt1_2, height: 0),
-=======
               Divider(thickness: 1, height: 0),
->>>>>>> 6d7bcbed0d2345c1b42f0ee7840d51c966533257
               Padding(
                 padding: EdgeInsets.all(16),
                 child: Text(
@@ -123,12 +113,8 @@ class _StudentBookingPagesState extends State<StudentBookingPages> {
           ),
         ),
       ),
-<<<<<<< HEAD
-=======
       body: Padding(
         padding: EdgeInsets.all(20),
-        child: _pendingBookings.isEmpty
-            ? _buildEmptyState()
             : _buildBookingList(),
       ),
     );
@@ -291,7 +277,6 @@ class _StudentBookingPagesState extends State<StudentBookingPages> {
           ),
         ],
       ),
->>>>>>> 6d7bcbed0d2345c1b42f0ee7840d51c966533257
     );
   }
 }

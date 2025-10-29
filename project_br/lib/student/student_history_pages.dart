@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-<<<<<<< HEAD
-=======
 import 'package:project_br/student/booking_service.dart';
->>>>>>> 6d7bcbed0d2345c1b42f0ee7840d51c966533257
 
 class StudentHistoryPages extends StatefulWidget {
   const StudentHistoryPages({super.key});
@@ -12,13 +9,6 @@ class StudentHistoryPages extends StatefulWidget {
 }
 
 class _StudentHistoryPagesState extends State<StudentHistoryPages> {
-<<<<<<< HEAD
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold();
-  }
-}
-=======
 
 //filter list status
   List<Map<String, dynamic>> _getFilteredBookings(String status) {
@@ -449,4 +439,3 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
     );
   }
 }
->>>>>>> 6d7bcbed0d2345c1b42f0ee7840d51c966533257
