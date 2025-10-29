@@ -1,5 +1,3 @@
-// lib/student/student_home_pages.dart
-
 import 'package:flutter/material.dart';
 import 'package:project_br/login/login_page.dart';
 import 'package:project_br/student/student_room_detail_pages.dart';
