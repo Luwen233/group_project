@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:project_br/login/login_page.dart';
 import 'package:project_br/staff/pages/widgets/room_card.dart';
 import 'package:project_br/staff/pages/edit_room_page.dart';
 
@@ -8,9 +9,7 @@ class HomePage extends StatelessWidget {
   // Navigation function for the edit button on RoomCard
   void navigateToEditRoom(BuildContext context, Map<String, String> roomData) {
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => EditRoomPage(roomData: roomData),
-      ),
+      MaterialPageRoute(builder: (context) => EditRoomPage(roomData: roomData)),
     );
   }
 
@@ -42,6 +41,12 @@ class HomePage extends StatelessWidget {
         "description": "For mathematics and engineering students.",
         "quantity": "5",
       },
+      {
+        "name": "Music Study Room",
+        "img": "assets/images/room4.jpg",
+        "description": "For Musical and engineering students.",
+        "quantity": "1",
+      },
     ];
 
     return Scaffold(
@@ -58,25 +63,29 @@ class HomePage extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _StatCard(
-                    icon: Icons.meeting_room, // Using a standard icon
-                    color: Colors.black54,
-                    value: "20",
-                    label: "Total Rooms"),
+                  icon: Icons.meeting_room, // Using a standard icon
+                  color: Colors.black54,
+                  value: "20",
+                  label: "Total Rooms",
+                ),
                 _StatCard(
-                    icon: Icons.check_circle,
-                    color: Colors.green,
-                    value: "10",
-                    label: "Free Slots"),
+                  icon: Icons.check_circle,
+                  color: Colors.green,
+                  value: "10",
+                  label: "Free Slots",
+                ),
                 _StatCard(
-                    icon: Icons.calendar_month,
-                    color: Colors.blue,
-                    value: "5",
-                    label: "Reserved Slots"),
+                  icon: Icons.calendar_month,
+                  color: Colors.blue,
+                  value: "5",
+                  label: "Reserved Slots",
+                ),
                 _StatCard(
-                    icon: Icons.hourglass_bottom,
-                    color: Colors.orange.shade800,
-                    value: "1",
-                    label: "Pending Slots"),
+                  icon: Icons.hourglass_bottom,
+                  color: Colors.orange.shade800,
+                  value: "1",
+                  label: "Pending Slots",
+                ),
               ],
             ),
           ),
@@ -86,7 +95,10 @@ class HomePage extends StatelessWidget {
             child: GridView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2, crossAxisSpacing: 8, mainAxisSpacing: 8),
+                crossAxisCount: 2,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
               itemCount: rooms.length,
               itemBuilder: (context, index) {
                 final room = rooms[index];
@@ -132,20 +144,31 @@ class HomePage extends StatelessWidget {
               const Text(
                 "Sep 20, 2025",
                 style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600),
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               // Staff Logout Dropdown Button
               PopupMenuButton<String>(
                 onSelected: (value) {
                   if (value == 'logout') {
                     // --- Handle Logout ---
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Staff logged out")),
-                    );
+                    // ScaffoldMessenger.of(context).showSnackBar(
+                    //   const SnackBar(content: Text("Staff logged out")),
+                    // );
                     // In a real app, navigate to login screen:
-                    // Navigator.of(context).pushReplacementNamed('/login');
+                    Navigator.pushNamedAndRemoveUntil(
+                      context,
+                      '/login',
+                      (route) => false,
+                      arguments: Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const LoginPage(),
+                        ),
+                      ),
+                    );
                   }
                 },
                 // This is the menu that appears on tap
@@ -165,8 +188,11 @@ class HomePage extends StatelessWidget {
                       "Staff jeff",
                       style: TextStyle(color: Colors.white, fontSize: 18),
                     ),
-                    Icon(Icons.keyboard_arrow_down,
-                        color: Colors.white, size: 24),
+                    Icon(
+                      Icons.keyboard_arrow_down,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                   ],
                 ), // Position the menu
               ),
@@ -231,10 +257,7 @@ class _StatCard extends StatelessWidget {
               ),
               Text(
                 label,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Colors.black54,
-                ),
+                style: const TextStyle(fontSize: 12, color: Colors.black54),
                 overflow: TextOverflow.ellipsis, // Prevents overflow
               ),
             ],
