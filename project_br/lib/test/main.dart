@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:project_br/login/login_page.dart';
 import 'package:project_br/login/signup_page.dart';
+<<<<<<< HEAD
 import 'package:project_br/student/widget_tree.dart';
+=======
+import 'package:project_br/widget/widget_tree.dart';
+>>>>>>> 6d7bcbed0d2345c1b42f0ee7840d51c966533257
 
 
 void main() {
