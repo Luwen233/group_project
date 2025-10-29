@@ -96,28 +96,28 @@ class HomePage extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _StatCard(
-                  icon: Icons.meeting_room,
-                  color: Colors.black54,
-                  value: "20",
-                  label: "Total Rooms",
-                ),
-                _StatCard(
                   icon: Icons.check_circle,
                   color: Colors.green,
-                  value: "10",
+                  value: "14",
                   label: "Free Slots",
                 ),
                 _StatCard(
                   icon: Icons.calendar_month,
                   color: Colors.blue,
-                  value: "5",
+                  value: "10",
                   label: "Reserved Slots",
                 ),
                 _StatCard(
                   icon: Icons.hourglass_bottom,
                   color: Colors.orange.shade800,
-                  value: "1",
+                  value: "5",
                   label: "Pending Slots",
+                ),
+                _StatCard(
+                  icon: Icons.lock,
+                  color: Colors.red,
+                  value: "1",
+                  label: "Disable Slots",
                 ),
               ],
             ),
