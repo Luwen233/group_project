@@ -128,20 +128,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           padding: const EdgeInsets.all(1),
           child: Row(
             children: [
-              const Text(
-                'Rooms Left',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                '2',
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Color(0xFFE53935),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(width: 16),
               Expanded(
                 child: ElevatedButton(
                   onPressed: isRoomBookable
