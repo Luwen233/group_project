@@ -287,6 +287,7 @@ class _StatCard extends StatelessWidget {
               Text(
                 label,
                 style: const TextStyle(fontSize: 12, color: Colors.black54),
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
