@@ -54,8 +54,10 @@ class _AddRoomPageState extends State<AddRoomPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Label above the text field
-                      Text("Type's room",
-                          style: TextStyle(color: Colors.grey.shade700)),
+                      Text(
+                        "Type's room",
+                        style: TextStyle(color: Colors.grey.shade700),
+                      ),
                       const SizedBox(height: 8),
                       TextField(
                         controller: _typeController,
@@ -63,57 +65,6 @@ class _AddRoomPageState extends State<AddRoomPage> {
                           hintText: "Room...", // Hint text as in image
                           border: OutlineInputBorder(),
                           contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-
-                // "Quantity" selector
-                Expanded(
-                  flex: 1, // Gives less space to the quantity
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Label above the selector
-                      Text("Quantity",
-                          style: TextStyle(color: Colors.grey.shade700)),
-                      const SizedBox(height: 8),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            // Remove Button
-                            IconButton(
-                              // --- THIS IS THE FIX ---
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              // -------------------------
-                              onPressed: () {
-                                if (quantity > 1) setState(() => quantity--);
-                              },
-                              icon: const Icon(Icons.remove, size: 18),
-                            ),
-                            // Quantity Text
-                            Text(quantity.toString(),
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16)),
-                            // Add Button
-                            IconButton(
-                              // --- THIS IS THE FIX ---
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              // -------------------------
-                              onPressed: () => setState(() => quantity++),
-                              icon: const Icon(Icons.add, size: 18),
-                            ),
-                          ],
                         ),
                       ),
                     ],
@@ -128,8 +79,10 @@ class _AddRoomPageState extends State<AddRoomPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Label above the text field
-                Text("Description",
-                    style: TextStyle(color: Colors.grey.shade700)),
+                Text(
+                  "Description",
+                  style: TextStyle(color: Colors.grey.shade700),
+                ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _descController,
@@ -158,8 +111,10 @@ class _AddRoomPageState extends State<AddRoomPage> {
                   const SnackBar(content: Text("Room added successfully")),
                 );
               },
-              child: const Text("Confirm",
-                  style: TextStyle(color: Colors.white, fontSize: 16)),
+              child: const Text(
+                "Confirm",
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
             ),
           ],
         ),
