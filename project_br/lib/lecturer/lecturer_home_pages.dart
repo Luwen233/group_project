@@ -15,10 +15,22 @@ class LecturerHomePages extends StatefulWidget {
 
 class _LecturerHomePagesState extends State<LecturerHomePages> {
   final List<Map<String, dynamic>> _rooms = [
-    {'name': 'Study Room A', 'status': 'Free', 'image': 'assets/images/room1.jpg'},
-    {'name': 'Law Study Room', 'status': 'Disable', 'image': 'assets/images/room2.jpg'},
+    {
+      'name': 'Study Room A',
+      'status': 'Free',
+      'image': 'assets/images/room1.jpg',
+    },
+    {
+      'name': 'Law Study Room',
+      'status': 'Disable',
+      'image': 'assets/images/room2.jpg',
+    },
     {'name': 'Room B101', 'status': 'Free', 'image': 'assets/images/room3.jpg'},
-    {'name': 'Room B102', 'status': 'Disable', 'image': 'assets/images/room4.jpg'},
+    {
+      'name': 'Room B102',
+      'status': 'Disable',
+      'image': 'assets/images/room4.jpg',
+    },
   ];
 
   final _searchBox = TextEditingController();
@@ -83,7 +95,7 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
         slivers: <Widget>[
           SliverAppBar(
             backgroundColor: const Color(0xFF3C9CBF),
-            expandedHeight: 220.0,
+            expandedHeight: 140.0,
             pinned: true,
             floating: true,
             shape: const RoundedRectangleBorder(
@@ -100,7 +112,10 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
             flexibleSpace: FlexibleSpaceBar(
               background: SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 25,
+                    vertical: 12,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -114,10 +129,13 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
                         alignment: Alignment.center,
                         child: Text(
                           formattedDate,
-                          style: const TextStyle(color: Colors.white, fontSize: 20),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 80),
+                      const SizedBox(height: 20),
                       Container(
                         height: 50,
                         decoration: BoxDecoration(
@@ -152,14 +170,19 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
                   return ValueListenableBuilder<List<BookingRequest>>(
                     valueListenable: historyRequestsNotifier,
                     builder: (context, historyList, _) {
-                      final reservedCount =
-                          historyList.where((req) => req.status == 'approved').length;
+                      final reservedCount = historyList
+                          .where((req) => req.status == 'approved')
+                          .length;
 
                       return DashboardSummary(
-                        freeSlots: _rooms.where((r) => r['status'] == 'Free').length,
+                        freeSlots: _rooms
+                            .where((r) => r['status'] == 'Free')
+                            .length,
                         reservedSlots: reservedCount,
                         pendingSlots: pendingList.length,
-                        disabledRooms: _rooms.where((r) => r['status'] == 'Disable').length,
+                        disabledRooms: _rooms
+                            .where((r) => r['status'] == 'Disable')
+                            .length,
                       );
                     },
                   );
@@ -210,33 +233,44 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(16),
+                        ),
                         child: Image.asset(
                           room['image'] as String,
-                          height: 120,
+                          height: 165,
                           width: double.infinity,
                           fit: BoxFit.cover,
                         ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
                         child: Text(
                           room['name'] as String,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
+                          style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ),
                       const Spacer(),
                       Padding(
-                        padding: const EdgeInsets.only(left: 12, right: 12, bottom: 15),
+                        padding: const EdgeInsets.only(
+                          left: 12,
+                          right: 12,
+                          bottom: 15,
+                        ),
                         child: Align(
                           alignment: Alignment.bottomRight,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 5,
+                            ),
                             decoration: BoxDecoration(
-                              color: isFree ? const Color(0xff3BCB53) : const Color(0xff4E534E),
+                              color: isFree
+                                  ? const Color(0xff3BCB53)
+                                  : const Color(0xff4E534E),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(

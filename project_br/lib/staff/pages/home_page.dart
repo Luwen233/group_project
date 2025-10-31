@@ -19,31 +19,31 @@ class _HomePageState extends State<HomePage> {
       "name": "Study Room",
       "img": "assets/images/room1.jpg",
       "description": "A quiet place for study.",
-      "quantity": "5",
+      "roomStatus": "Free",
     },
     {
       "name": "Law Study Room",
       "img": "assets/images/room2.jpg",
       "description": "Exclusive room for law students.",
-      "quantity": "5",
+      "roomStatus": "Free",
     },
     {
       "name": "Meeting Room",
       "img": "assets/images/room3.jpg",
       "description": "Large space for group meetings.",
-      "quantity": "5",
+      "roomStatus": "Free",
     },
     {
       "name": "Math Study Room",
       "img": "assets/images/room4.jpg",
       "description": "For mathematics and engineering students.",
-      "quantity": "5",
+      "roomStatus": "Free",
     },
     {
       "name": "Music Study Room",
       "img": "assets/images/room4.jpg",
-      "description": "For Musical and engineering students.",
-      "quantity": "1",
+      "description": "For musical and engineering students.",
+      "roomStatus": "Disable",
     },
   ];
 
@@ -56,10 +56,19 @@ class _HomePageState extends State<HomePage> {
     }).toList();
   }
 
-  void navigateToEditRoom(BuildContext context, Map<String, String> roomData) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => EditRoomPage(roomData: roomData)),
+  void navigateToEditRoom(BuildContext context, int index) async {
+    final updatedRoom = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditRoomPage(roomData: _rooms[index]),
+      ),
     );
+
+    if (updatedRoom != null) {
+      setState(() {
+        _rooms[index] = updatedRoom;
+      });
+    }
   }
 
   @override
@@ -107,13 +116,12 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
 
-      // Main body
       body: CustomScrollView(
         slivers: [
           // Header
           SliverAppBar(
             backgroundColor: const Color(0xFF3C9CBF),
-            expandedHeight: 200,
+            expandedHeight: 150,
             pinned: true,
             floating: true,
             shape: const RoundedRectangleBorder(
@@ -130,7 +138,10 @@ class _HomePageState extends State<HomePage> {
             flexibleSpace: FlexibleSpaceBar(
               background: SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 25,
+                    vertical: 12,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -144,10 +155,13 @@ class _HomePageState extends State<HomePage> {
                         alignment: Alignment.center,
                         child: Text(
                           formattedDate,
-                          style: const TextStyle(color: Colors.white, fontSize: 20),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 80),
+                      const SizedBox(height: 20),
                       Container(
                         height: 50,
                         decoration: BoxDecoration(
@@ -208,7 +222,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
 
-          // GridView of RoomCards
+          // Room Grid
           SliverPadding(
             padding: const EdgeInsets.all(12),
             sliver: SliverGrid.builder(
@@ -221,11 +235,12 @@ class _HomePageState extends State<HomePage> {
               ),
               itemBuilder: (context, index) {
                 final room = _filteredRooms()[index];
+                final originalIndex = _rooms.indexOf(room);
                 return RoomCard(
-                  title: room["name"]!,
-                  imagePath: room["img"]!,
+                  title: room['name']!,
+                  imagePath: room['img']!,
                   roomData: room,
-                  onEdit: () => navigateToEditRoom(context, room),
+                  onEdit: () => navigateToEditRoom(context, originalIndex),
                 );
               },
             ),

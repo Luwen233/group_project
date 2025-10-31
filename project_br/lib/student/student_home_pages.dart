@@ -109,7 +109,7 @@ class _StudentHomePagesState extends State<StudentHomePages> {
         slivers: <Widget>[
           SliverAppBar(
             backgroundColor: Color(0xFF3C9CBF),
-            expandedHeight: 214.0,
+            expandedHeight: 150.0,
             pinned: true,
             floating: true,
             shape: RoundedRectangleBorder(
@@ -139,7 +139,7 @@ class _StudentHomePagesState extends State<StudentHomePages> {
                         ),
                       ),
 
-                      const SizedBox(height: 80),
+                      const SizedBox(height: 20),
 
                       Container(
                         height: 50,
@@ -208,7 +208,7 @@ class _StudentHomePagesState extends State<StudentHomePages> {
                           ),
                           child: Image.asset(
                             room['image'] as String,
-                            height: 120,
+                            height: 165,
                             width: double.infinity,
                             fit: BoxFit.cover,
                           ),
@@ -222,7 +222,7 @@ class _StudentHomePagesState extends State<StudentHomePages> {
                             room['name'] as String,
                             style: const TextStyle(
                               fontWeight: FontWeight.w600,
-                              fontSize: 16,
+                              // fontSize: 16,
                             ),
                           ),
                         ),
@@ -234,7 +234,7 @@ class _StudentHomePagesState extends State<StudentHomePages> {
                             bottom: 15,
                           ),
                           child: Align(
-                            alignment: Alignment.bottomRight,
+                            alignment: Alignment.centerRight,
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 14,

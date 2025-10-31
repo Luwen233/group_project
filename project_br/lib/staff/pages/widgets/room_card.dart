@@ -16,37 +16,36 @@ class RoomCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Get the quantity from the roomData, default to '1' if not provided
-    final String quantity = roomData['quantity'] ?? '1';
+    final String roomStatus = roomData['roomStatus'] ?? 'Free';
+    final bool isFree = roomStatus.toLowerCase() == 'free';
 
     return Card(
       clipBehavior: Clip.antiAlias,
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Stack( // The Stack allows layering widgets
+      child: Stack(
         children: [
-          // Base content (Image and Title)
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ClipRRect(
-                child: Image.asset(imagePath,
-                height: 120,
-                    fit: BoxFit.cover, width: double.infinity),
+              Image.asset(
+                imagePath,
+                height: 165,
+                fit: BoxFit.cover,
+                width: double.infinity,
               ),
               Padding(
                 padding: const EdgeInsets.all(8),
                 child: Text(
                   title,
                   style: const TextStyle(fontWeight: FontWeight.bold),
-                  maxLines: 1, // Prevent title from overlapping badge
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
-          
-          // Edit Button (top-left)
+
           Positioned(
             top: 4,
             left: 4,
@@ -55,42 +54,37 @@ class RoomCard extends StatelessWidget {
               icon: const Icon(Icons.settings, color: Colors.white, size: 24),
               style: IconButton.styleFrom(
                 backgroundColor: Colors.black54,
-                minimumSize: Size.zero,
                 padding: const EdgeInsets.all(4),
               ),
             ),
           ),
 
-          // --- NEW: Quantity Badge (bottom-right) ---
           Positioned(
             bottom: 8,
             right: 8,
-            child: Row(
-              children: [
-                // Quantity Text (e.g., "x5")
-                Text(
-                  'x$quantity',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                // Home Icon with green background
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.green,
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                  child: const Icon(
-                    Icons.home,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: isFree ? Colors.green : Colors.red,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isFree ? Icons.check_circle : Icons.block,
                     color: Colors.white,
-                    size: 16,
+                    size: 14,
                   ),
-                ),
-              ],
+                  const SizedBox(width: 4),
+                  Text(
+                    roomStatus,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
