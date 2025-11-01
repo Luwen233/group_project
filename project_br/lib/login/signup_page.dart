@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'login_page.dart';
 
@@ -13,25 +15,49 @@ class _SignUpPageState extends State<SignUpPage> {
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
   final confirmController = TextEditingController();
-  final Color mainColor = Color(0xFF3C9CBF);
-
+  final Color mainColor = const Color(0xFF3C9CBF);
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
 
-  void _signup() {
-    if (passwordController.text == confirmController.text &&
-        usernameController.text.isNotEmpty) {
+  Future<void> _signup() async {
+    if (passwordController.text != confirmController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Account created! Please log in.")),
+        const SnackBar(content: Text("Passwords do not match")),
       );
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginPage()),
+      return;
+    }
+
+    final url = Uri.parse('http://172.16.10.240:3000/auth/register');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'username': usernameController.text.trim(),
+          'email': emailController.text.trim(),
+          'password': passwordController.text.trim(),
+        }),
       );
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Passwords do not match")));
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Registration successful!")),
+        );
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(data['message'] ?? 'Registration failed')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
     }
   }
 

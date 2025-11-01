@@ -1,9 +1,11 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:project_br/login/signup_page.dart';
 import 'package:project_br/staff/pages/linkpage.dart';
 import 'package:project_br/student/widget_tree.dart';
 import 'package:project_br/lecturer/lecturer_widget_tree.dart';
-
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -15,45 +17,67 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
-  final Color mainColor = Color(0xFF3C9CBF);
+  final Color mainColor = const Color(0xFF3C9CBF);
   bool obscurePassword = true;
-  @override
-  Widget build(BuildContext context) {
+  bool isLoading = false;
 
-    void login() {
-      if (usernameController.text == "staff" &&
-          passwordController.text == "1234") { ///testing staff
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const RoomApp(),
-          ), 
-        );
-      }
-      else if (usernameController.text == "lender" &&
-          passwordController.text == "1234") { ///testing lender
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const LecturerWidgetTree(),
-          ), 
-        );
-      }
-      else if (usernameController.text == "student" &&
-          passwordController.text == "1234") { ///testing
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const WidgetTree(),
-          ), 
-        );
+  Future<void> login() async {
+    setState(() => isLoading = true);
+
+    // final url = Uri.parse('http://192.168.174.1:3000/auth/login');
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://172.16.10.240:3000/auth/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          "username": usernameController.text.trim(),
+          "password": passwordController.text.trim()
+        }),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['token'] != null) {
+        // เก็บ token ไว้ใน SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', data['token']);
+        await prefs.setString('role', data['role']);
+
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text("Login Successful!")));
+
+        // นำทางตาม role
+        if (data['role'] == 'Staff') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const RoomApp()),
+          );
+        } else if (data['role'] == 'Lecturer') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const LecturerWidgetTree()),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const WidgetTree()),
+          );
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Invalid username or password")),
+          SnackBar(content: Text(data['message'] ?? 'Login failed')),
         );
       }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
+    } finally {
+      setState(() => isLoading = false);
     }
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       body: Column(
         children: [

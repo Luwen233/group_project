@@ -235,6 +235,6 @@ app.get('/logs/room/:id', (req, res) => {
 // root service
 // localhost:3000
 const PORT = 3000;
-app.listen(PORT, () => {
+app.listen(PORT,"0.0.0.0", () => {
     console.log('Server is running at ' + PORT);
 });
