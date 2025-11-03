@@ -83,7 +83,7 @@ app.post('/auth/login', (req, res) => {
                 sameSite: 'lax'
             });
 
-            res.json({ message: 'Login ok', user_id: results[0].user_id, role: role, token });
+            res.json({ message: 'Login ok', user_id: results[0].user_id, role: role, token, username: username });
         });
     });
 });
@@ -151,15 +151,108 @@ app.get('/auth/profile', (req, res) => {
     });
 });
 
+
+
 ///=========================================================================
-
+// GET Browse All rooms
 app.get('/rooms', (req, res) => {
+    const today = new Date().toISOString().split('T')[0];
 
+    const roomsSql = 'SELECT room_id, room_name, room_description, room_status, capacity, image FROM rooms';
+
+    con.query(roomsSql, (err, rooms) => {
+        if (err) {
+            console.error('[GET /rooms] (Query 1) error:', err);
+            return res.status(500).json({ error: 'Database server error' });
+        }
+
+        //  GET ALL of today's booked slots ---
+        const bookingsSql = `
+            SELECT room_id, slot_id 
+            FROM bookings 
+            WHERE booking_date = ? 
+            AND (booking_status = 'Pending' OR booking_status = 'Approved')
+        `;
+
+        con.query(bookingsSql, [today], (err, bookings) => {
+            if (err) {
+                console.error('[GET /rooms] (Query 2) error:', err);
+                return res.status(500).json({ error: 'Database server error' });
+            }
+            //loop
+            const finalRoomsData = rooms.map(room => {
+
+                const matchingBookings = bookings.filter(booking => {
+                    return booking.room_id === room.room_id;
+                });
+                const booked_slots = matchingBookings.map(b => b.slot_id);
+
+                return {
+                    ...room,
+                    booked_slots: booked_slots
+                };
+            });
+            res.json(finalRoomsData);
+        });
+    });
 });
 
 app.get('/rooms/:id', (req, res) => {
+    const roomId = req.params.id;
+    const today = new Date().toISOString().split('T')[0]; 
 
+
+    const roomSql = 'SELECT room_id, room_name, room_description, room_status, capacity, image FROM rooms WHERE room_id = ?';
+
+    con.query(roomSql, [roomId], (err, roomResult) => { 
+        if (err)
+            return res.status(500).json({ error: err });
+        if (roomResult.length === 0) {
+            return res.status(404).json({ error: 'Room not found' });
+        }
+
+        const roomDetails = roomResult[0];
+
+        const slotSql = `SELECT slot_id 
+        FROM bookings 
+        WHERE room_id = ? 
+        AND booking_date = ?
+        AND (booking_status = 'Pending' OR booking_status = 'Approved')`;
+
+        con.query(slotSql, [roomId, today], (err, slotResults) => {
+            if (err)
+                return res.status(500).json({ error: err });
+
+            const bookedSlotIds = slotResults.map(row => row.slot_id);
+
+            const finalRes = {
+                ...roomDetails,
+                booked_slots: bookedSlotIds
+            }
+            res.json(finalRes);
+        });
+    });
 });
+
+// GET check if student has an active booking TODAY
+app.get('/my-bookings-today/:userId', (req, res) => {
+    const userId = req.params.userId;
+    const today = new Date().toISOString().split('T')[0];
+
+    const sql = `
+        SELECT booking_id FROM bookings
+        WHERE user_id = ? 
+        AND booking_date = ? 
+        AND (booking_status = 'Pending' OR booking_status = 'Approved')
+    `;
+
+    con.query(sql, [userId, today], (err, results) => {
+        if (err) return res.status(500).json({ error: err });
+        res.json(results);
+    });
+});
+
+
 
 app.post('/rooms/:type', (req, res) => {
 
@@ -184,8 +277,23 @@ app.get('/timeslots/', (req, res) => {
 });
 ///=========================================================================
 
-app.post('/bookings', (req, res) => {
+app.post('/bookings', verifyUser, (req, res) => {
+    const { room_id, slot_id, booking_date, booking_reason } = req.body;
+    const user_id = req.decoded ? req.decoded.id : null;
 
+    if (!room_id || !slot_id || !booking_date || !user_id) {
+        return res.status(400).json({ error: 'Missing required booking information.' });
+    }
+
+    const sql = "INSERT INTO bookings (room_id, slot_id, booking_date, booking_reason, user_id, booking_status) VALUES (?, ?, ?, ?, ?, 'Pending')";
+
+    con.query(sql, [room_id, slot_id, booking_date, booking_reason || null, user_id], (err, result) => {
+        if (err) {
+            console.error('Booking Error:', err);
+            return res.status(500).json({ error: 'Failed to create booking' });
+        }
+        res.status(200).json({ message: 'Booking request sent!', booking_id: result.insertId });
+    });
 });
 
 app.get('/bookings', (req, res) => {
@@ -196,9 +304,18 @@ app.get('/bookings/:id', (req, res) => {
 
 });
 
-app.patch('/bookings/:id/cancel', (req, res) => {
+// app.patch('/bookings/:id/cancel', (req, res) => {
+//     const bookingId = req.params.id;
+//     const sql = "UPDATE bookings SET booking_status = 'Cancelled' WHERE booking_id = ?";
 
-});
+//     con.query(sql, [bookingId], (err, result) => {
+//         if (err) return res.status(500).json({ error: err });
+//         if (result.affectedRows === 0) {
+//             return res.status(404).json({ error: 'Booking not found' });
+//         }
+//         res.json({ message: 'Booking cancelled' });
+//     });
+// });
 
 app.get('/bookings/requests', (req, res) => {
 
@@ -235,6 +352,6 @@ app.get('/logs/room/:id', (req, res) => {
 // root service
 // localhost:3000
 const PORT = 3000;
-app.listen(PORT,"0.0.0.0", () => {
+app.listen(PORT, "0.0.0.0", () => {
     console.log('Server is running at ' + PORT);
 });
