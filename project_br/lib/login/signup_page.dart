@@ -29,7 +29,8 @@ class _SignUpPageState extends State<SignUpPage> {
       return;
     }
 
-    final url = Uri.parse('http://172.16.10.240:3000/auth/register');
+    //final url = Uri.parse('http://172.16.10.240:3000/auth/register');
+    final url = Uri.parse('http://127.0.0.1:3000/auth/register');
     try {
       final response = await http.post(
         url,
@@ -182,7 +183,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         const SizedBox(height: 16),
                         TextField(
                           controller: confirmController,
-                          obscureText: _obscurePassword,
+                          obscureText: _obscureConfirm,
                           decoration: InputDecoration(
                             hintText: 'Confirm Password',
                             filled: true,
@@ -221,7 +222,11 @@ class _SignUpPageState extends State<SignUpPage> {
                           onPressed: _signup,
                           child: const Text(
                             'Sign Up',
-                            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 16),
