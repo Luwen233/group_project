@@ -16,7 +16,7 @@ class StudentNavbarWidget extends StatelessWidget {
             NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
             NavigationDestination(
               icon: Icon(Icons.event_note_outlined),
-              label: 'Comming request',
+              label: 'My Request',
             ),
             NavigationDestination(
               icon: Icon(Icons.work_history_rounded),
