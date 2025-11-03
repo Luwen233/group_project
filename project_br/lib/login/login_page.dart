@@ -40,8 +40,16 @@ class _LoginPageState extends State<LoginPage> {
       if (response.statusCode == 200 && data['token'] != null) {
         // เก็บ token ไว้ใน SharedPreferences
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', data['token']);
-        await prefs.setString('role', data['role']);
+        final String token = data['token'];
+        final String role = data['role'];
+        final int userId = data['user_id'];
+        final String username =
+            (data['username'] as String?) ?? usernameController.text.trim();
+
+        await prefs.setString('token', token);
+        await prefs.setString('role', role);
+        await prefs.setInt('user_id', userId);
+        await prefs.setString('username', username);
 
         ScaffoldMessenger.of(
           context,
