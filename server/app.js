@@ -199,12 +199,12 @@ app.get('/rooms', (req, res) => {
 
 app.get('/rooms/:id', (req, res) => {
     const roomId = req.params.id;
-    const today = new Date().toISOString().split('T')[0]; 
+    const today = new Date().toISOString().split('T')[0];
 
 
     const roomSql = 'SELECT room_id, room_name, room_description, room_status, capacity, image FROM rooms WHERE room_id = ?';
 
-    con.query(roomSql, [roomId], (err, roomResult) => { 
+    con.query(roomSql, [roomId], (err, roomResult) => {
         if (err)
             return res.status(500).json({ error: err });
         if (roomResult.length === 0) {
@@ -331,39 +331,73 @@ app.patch('/bookings/reject', (req, res) => {
 
 ///=========================================================================
 
+// /logs
 app.get('/logs', (req, res) => {
-  const sql = 'SELECT * FROM booking_logs';
- con.query(sql, (err, results) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ message: 'Database error' });
-    }
-    res.json(results);
-  });
+    const sql = `
+    SELECT
+      bl.log_id,
+      bl.room_id,
+      r.room_name,
+      bl.booking_date,
+      bl.slot_id,
+      bl.booked_by,
+      u1.name AS booked_by_name,
+      bl.approved_by,
+      u2.name AS approved_by_name,
+      bl.action,
+      bl.timestamp
+    FROM booking_logs bl
+    LEFT JOIN rooms r   ON r.id = bl.room_id
+    LEFT JOIN users u1  ON u1.id = bl.booked_by
+    LEFT JOIN users u2  ON u2.id = bl.approved_by
+    ORDER BY bl.log_id DESC
+  `;
+    con.query(sql, (err, results) => {
+        if (err) return res.status(500).json({ message: 'Database error' });
+        res.json(results);
+    });
 });
 
+// /logs/user/:id
 app.get('/logs/user/:id', (req, res) => {
-  const userId = req.params.id;
-  const sql = 'SELECT * FROM booking_logs WHERE booked_by = ? ORDER BY log_id ASC';
-  db.query(sql, [userId], (err, results) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ message: 'Database error' });
-    }
-    res.json(results);
-  });
+    const userId = req.params.id;
+    const sql = `
+    SELECT
+      bl.log_id,
+      bl.room_id,
+      r.room_name,
+      bl.booking_date,
+      bl.slot_id,
+      bl.booked_by,
+      u1.username AS booked_by_name,
+      bl.approved_by,
+      u2.username AS approved_by_name,
+      bl.action,
+      bl.timestamp
+    FROM booking_logs bl
+    LEFT JOIN rooms r   ON r.room_id = bl.room_id
+    LEFT JOIN users u1  ON u1.user_id = bl.booked_by
+    LEFT JOIN users u2  ON u2.user_id = bl.approved_by
+    WHERE bl.booked_by = ?
+    ORDER BY bl.log_id ASC;
+  `;
+    con.query(sql, [userId], (err, results) => {
+        if (err) return res.status(500).json({ message: 'Database error' });
+        res.json(results);
+    });
 });
+
 
 app.get('/logs/room/:id', (req, res) => {
-  const roomId = req.params.id;
-  const sql = 'SELECT * FROM booking_logs WHERE room_id = ? ORDER BY log_id ASC';
-  db.query(sql, [roomId], (err, results) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ message: 'Database error' });
-    }
-    res.json(results);
-  });
+    const roomId = req.params.id;
+    const sql = 'SELECT * FROM booking_logs WHERE room_id = ? ORDER BY log_id ASC';
+    con.query(sql, [roomId], (err, results) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ message: 'Database error' });
+        }
+        res.json(results);
+    });
 });
 
 
