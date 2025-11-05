@@ -332,15 +332,38 @@ app.patch('/bookings/reject', (req, res) => {
 ///=========================================================================
 
 app.get('/logs', (req, res) => {
-
+  const sql = 'SELECT * FROM booking_logs';
+ con.query(sql, (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ message: 'Database error' });
+    }
+    res.json(results);
+  });
 });
 
 app.get('/logs/user/:id', (req, res) => {
-
+  const userId = req.params.id;
+  const sql = 'SELECT * FROM booking_logs WHERE booked_by = ? ORDER BY log_id ASC';
+  db.query(sql, [userId], (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ message: 'Database error' });
+    }
+    res.json(results);
+  });
 });
 
 app.get('/logs/room/:id', (req, res) => {
-
+  const roomId = req.params.id;
+  const sql = 'SELECT * FROM booking_logs WHERE room_id = ? ORDER BY log_id ASC';
+  db.query(sql, [roomId], (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ message: 'Database error' });
+    }
+    res.json(results);
+  });
 });
 
 
