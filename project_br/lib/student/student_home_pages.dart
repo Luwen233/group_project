@@ -70,8 +70,6 @@ class _StudentHomePagesState extends State<StudentHomePages> {
 
       if (res.statusCode == 200) {
         final List data = jsonDecode(res.body);
-        print("ssssssssssssssssssssssss");
-        print(data);
         if (mounted) {
           setState(() {
             if (data.isNotEmpty) {
