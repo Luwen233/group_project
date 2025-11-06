@@ -152,7 +152,6 @@ app.get('/auth/profile', (req, res) => {
 ///=========================================================================
 // GET Browse All rooms
 app.get('/rooms', (req, res) => {
-    const today = new Date().toISOString().split('T')[0];
 
     const roomsSql = 'SELECT room_id, room_name, room_description, room_status, capacity, image FROM rooms';
 
@@ -166,11 +165,11 @@ app.get('/rooms', (req, res) => {
         const bookingsSql = `
             SELECT room_id, slot_id 
             FROM bookings 
-            WHERE booking_date = ? 
-            AND (booking_status = 'Pending' OR booking_status = 'Approved')
+            WHERE booking_date = CURDATE()
+            AND (booking_status = 'Pending' OR booking_status = 'approved')
         `;
 
-        con.query(bookingsSql, [today], (err, bookings) => {
+        con.query(bookingsSql, (err, bookings) => {
             if (err) {
                 console.error('[GET /rooms] (Query 2) error:', err);
                 return res.status(500).json({ error: 'Database server error' });
@@ -195,7 +194,6 @@ app.get('/rooms', (req, res) => {
 
 app.get('/rooms/:id', (req, res) => {
     const roomId = req.params.id;
-    const today = new Date().toISOString().split('T')[0];
 
     const roomSql = 'SELECT room_id, room_name, room_description, room_status, capacity, image FROM rooms WHERE room_id = ?';
 
@@ -210,11 +208,11 @@ app.get('/rooms/:id', (req, res) => {
 
         const slotSql = `SELECT slot_id 
         FROM bookings 
-        WHERE room_id = ? 
-        AND booking_date = ?
+        WHERE room_id = ?
+        AND booking_date = CURDATE()
         AND (booking_status = 'Pending' OR booking_status = 'Approved')`;
 
-        con.query(slotSql, [roomId, today], (err, slotResults) => {
+        con.query(slotSql, [roomId], (err, slotResults) => {
             if (err)
                 return res.status(500).json({ error: err });
 
