@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class StudentHistoryPages extends StatefulWidget {
@@ -15,54 +16,86 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
   List<Map<String, dynamic>> _bookings = [];
   bool _isLoading = true;
   String? _error;
+  String _mapSlotIdToTime(int? slotId) {
+    switch (slotId) {
+      case 1:
+        return '08.00 - 10.00 AM';
+      case 2:
+        return '10.00 - 12.00 AM';
+      case 3:
+        return '01.00 - 03.00 PM';
+      case 4:
+        return '03.00 - 05.00 PM';
+      default:
+        return 'Unknown Time';
+    }
+  }
+
+  bool _isHistoryItem(Map<String, dynamic> booking) {
+    final String status = booking['status'] ?? '';
+    final String bookingDateStr = booking['date'] ?? '';
+
+    final String todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final bool isToday = (bookingDateStr == todayStr);
+    if (status == 'Cancelled') {
+      return true;
+    }
+
+    if ((status == 'Approved' || status == 'Rejected') && !isToday) {
+      return true;
+    }
+    return false;
+  }
 
   @override
   void initState() {
     super.initState();
-    _init();
+    _loadBookings();
   }
 
-  Future<void> _init() async {
-    await _loadUserData();
-    await _loadLogs();
-  }
-
-  Future<void> _loadUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      savedUserID = prefs.getInt('user_id');
-    });
-  }
-
-  Future<void> _loadLogs() async {
-    if (savedUserID == null) return;
-
+  Future<void> _loadBookings() async {
     try {
       setState(() {
         _isLoading = true;
         _error = null;
       });
 
-      // 👇 เปลี่ยน IP ให้ตรงกับ server ของคุณ เช่น 192.168.1.10
-      final uri = Uri.http('172.27.1.70:3000', '/logs/user/$savedUserID');
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('user_id');
+
+      if (userId == null) {
+        throw Exception("User ID not found. Please log in again.");
+      }
+
+      final uri = Uri.http('172.16.10.111:3000', '/bookings/user/$userId');
       final res = await http.get(uri).timeout(const Duration(seconds: 10));
 
       if (res.statusCode == 200) {
         final List data = jsonDecode(res.body);
+        print("--- HISTORY PAGE: RAW DATA FROM SERVER ---");
+        print(data);
         setState(() {
           _bookings = data.map<Map<String, dynamic>>((b) {
+            final String dateFromServer = (b['booking_date'] ?? 'N/A').toString();
+            final String statusFromServer = (b['status'] ?? 'unknown').toString();
+
             return {
-              'id': b['booking_id'].toString(),
+              'id': b['id'].toString(),
               'roomName': b['room_name'] ?? 'Unknown Room',
-              'date': b['booking_date'] ?? 'N/A',
-              'time': '${b['start_time'] ?? ''} - ${b['end_time'] ?? ''}',
-              'status': b['booking_status'] ?? 'Cancelled',
+              'date': dateFromServer.split('T')[0], // 👈 FIX 1
+              'time': _mapSlotIdToTime(b['slot_id'] as int?),
+              'status':
+                  statusFromServer
+                      .isNotEmpty // 👈 FIX 2
+                  ? statusFromServer[0].toUpperCase() +
+                        statusFromServer.substring(1)
+                  : 'Unknown',
               'reason': b['reason'] ?? '',
-              'approver': b['approver'] ?? '-',
-              'lecturerNote': b['approver_note'] ?? '',
-              'actionDate': b['updated_at'] ?? '',
-              'image': 'assets/images/room1.jpg',
-              'name': b['user_name'] ?? 'Unknown',
+              'approver': b['approver_name'] ?? '-',
+              'lecturerNote': b['lecturer_note'] ?? '',
+              'actionDate': b['action_date'] ?? '',
+              'image': b['image'],
+              'name': b['booked_by_name'] ?? 'Unknown',
             };
           }).toList();
         });
@@ -77,13 +110,22 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
   }
 
   List<Map<String, dynamic>> _getFilteredBookings(String status) {
+    
+    final List<Map<String, dynamic>> historyBookings = _bookings
+        .where(_isHistoryItem) 
+        .toList();
+
     if (status == 'All') {
-      return _bookings.where((b) => b['status'] != 'Pending').toList();
+      return historyBookings;
     }
-    return _bookings.where((b) => b['status'] == status).toList();
+    
+    return historyBookings.where((b) => b['status'] == status).toList();
   }
 
-  void _showMoreDetailsSheet(BuildContext context, Map<String, dynamic> booking) {
+  void _showMoreDetailsSheet(
+    BuildContext context,
+    Map<String, dynamic> booking,
+  ) {
     final String status = booking['status'] ?? 'Cancelled';
     Color statusColor;
     String statusActionText;
@@ -116,12 +158,17 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Request ID: ${booking['id']}',
-                    style: TextStyle(color: Colors.grey[600])),
+                Text(
+                  'Request ID: ${booking['id']}',
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
                 const SizedBox(height: 10),
                 Text(
                   booking['roomName'],
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text('Date: ${booking['date']}'),
@@ -129,11 +176,12 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
                 const SizedBox(height: 15),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
-                  child: Image.asset(
-                    booking['image'],
+                  child: SizedBox(
                     height: 160,
                     width: double.infinity,
-                    fit: BoxFit.cover,
+                    child: _buildSafeImage(
+                      booking['image'],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -151,12 +199,13 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xff3BCB53),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   child: const Center(
                     child: Text('OK', style: TextStyle(color: Colors.white)),
                   ),
-                )
+                ),
               ],
             ),
           ),
@@ -177,7 +226,10 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
               value,
               textAlign: TextAlign.end,
               style: const TextStyle(
-                  fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black),
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: Colors.black,
+              ),
             ),
           ),
         ],
@@ -194,8 +246,10 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
           backgroundColor: const Color(0xFFF7F7F7),
           elevation: 3,
           shadowColor: Colors.black54,
-          title: const Text('My History',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          title: const Text(
+            'My History',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
           bottom: const PreferredSize(
             preferredSize: Size.fromHeight(67),
             child: Column(
@@ -221,16 +275,31 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
         body: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _error != null
-                ? Center(child: Text('Error: $_error'))
-                : TabBarView(
-                    children: [
-                      _buildHistoryList('All'),
-                      _buildHistoryList('Approved'),
-                      _buildHistoryList('Rejected'),
-                      _buildHistoryList('Cancelled'),
-                    ],
-                  ),
+            ? Center(child: Text('Error: $_error'))
+            : TabBarView(
+                children: [
+                  _buildHistoryList('All'),
+                  _buildHistoryList('Approved'),
+                  _buildHistoryList('Rejected'),
+                  _buildHistoryList('Cancelled'),
+                ],
+              ),
       ),
+    );
+  }
+
+  Widget _buildSafeImage(dynamic imageValue) {
+    final imageName = (imageValue as String?) ?? '';
+    final localAsset = imageName.isNotEmpty
+        ? 'assets/images/$imageName'
+        : 'assets/images/placeholder.png'; 
+
+    return Image.asset(
+      localAsset,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return Image.asset('assets/images/placeholder.png', fit: BoxFit.cover);
+      },
     );
   }
 
@@ -273,13 +342,15 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
           ),
           Container(
             height: 120,
-            decoration: BoxDecoration(
-              borderRadius:
-                  const BorderRadius.vertical(bottom: Radius.circular(10)),
-              image: DecorationImage(
-                image: AssetImage(booking['image']),
-                fit: BoxFit.cover,
+            width:
+                double.infinity,
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(10),
               ),
+              child: _buildSafeImage(
+                booking['image'],
+              ), 
             ),
           ),
           Padding(
@@ -297,7 +368,9 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
                       child: Text(
                         status,
                         style: const TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.bold),
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -306,8 +379,10 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => _showMoreDetailsSheet(context, booking),
-                    child: const Text('More',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      'More',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
               ],
