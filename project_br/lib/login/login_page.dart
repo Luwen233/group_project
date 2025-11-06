@@ -29,7 +29,7 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://172.27.1.70:3000/auth/login'),
+        Uri.parse('http://172.16.10.111:3000/auth/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           "username": usernameController.text.trim(),

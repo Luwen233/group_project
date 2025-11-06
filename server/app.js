@@ -125,21 +125,16 @@ app.post('/auth/logout', (req, res) => {
     res.json({ message: 'Logout successful' });
 });
 
-// Profile route to check cookie
 app.get('/auth/profile', (req, res) => {
     const token = req.cookies.authToken;
 
     if (!token) {
         return res.status(401).json({ success: false, message: 'Unauthorized: No token' });
     }
-
-    // ตรวจสอบ token ด้วย jwt.verify
     jwt.verify(token, JWT_KEY, (err, decoded) => {
         if (err) {
             return res.status(403).json({ success: false, message: 'Invalid or expired token' });
         }
-
-        // ถอดรหัสสำเร็จ → ส่งข้อมูลผู้ใช้กลับไป
         res.json({
             success: true,
             message: 'Welcome to your profile',
@@ -167,7 +162,7 @@ app.get('/rooms', (req, res) => {
             return res.status(500).json({ error: 'Database server error' });
         }
 
-        //  GET ALL of today's booked slots ---
+
         const bookingsSql = `
             SELECT room_id, slot_id 
             FROM bookings 
@@ -180,7 +175,7 @@ app.get('/rooms', (req, res) => {
                 console.error('[GET /rooms] (Query 2) error:', err);
                 return res.status(500).json({ error: 'Database server error' });
             }
-            //loop
+
             const finalRoomsData = rooms.map(room => {
 
                 const matchingBookings = bookings.filter(booking => {
@@ -241,80 +236,94 @@ app.get('/bookings/user/:userId', (req, res) => {
   SELECT 
     b.booking_id AS id,
     r.room_name,
-    b.booking_date,
-    ts.start_time,
-    ts.end_time,
+    r.image,
+    DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date,
+    b.slot_id, 
     b.booking_status AS status,
     b.booking_reason AS reason,
     b.reject_reason AS lecturer_note,
-    b.approved_by,
-    u.username AS booked_by_name
+    u_booked.username AS booked_by_name,
+    u_approver.username AS approver_name,
+    COALESCE(b.approved_on, b.rejected_on) AS action_date
+
   FROM bookings b
   JOIN rooms r ON b.room_id = r.room_id
-  JOIN users u ON b.user_id = u.user_id
-  JOIN time_slots ts ON b.slot_id = ts.slot_id
-  WHERE b.user_id = ?
-  AND b.booking_status = 'Pending'
-  ORDER BY b.booking_date DESC, ts.start_time DESC
+  JOIN users u_booked ON b.user_id = u_booked.user_id
+  LEFT JOIN users u_approver ON b.approved_by = u_approver.user_id
+  WHERE b.user_id = ?   
+  ORDER BY b.booking_date DESC, b.slot_id ASC
 `;
-
 
     con.query(sql, [userId], (err, result) => {
         if (err) {
             console.error("DB error:", err);
-            return res.status(500).json({ error: "Database query failed" });
+            return res.status(500).json({ error: "Database query failed", details: err.message });
         }
+        res.json(result);
+    });
+});
 
+app.get('/bookings/user/:userId/today', (req, res) => {
+    const userId = req.params.userId;
+
+    const sql = `
+  SELECT 
+    b.booking_id AS id,
+    r.room_id,
+    r.room_name,
+    r.image,
+    DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date,
+    b.slot_id, 
+    b.booking_status AS status,
+    b.booking_reason AS reason,
+    b.reject_reason AS lecturer_note,
+    u_booked.username AS booked_by_name,
+    u_approver.username AS approver_name,
+    COALESCE(b.approved_on, b.rejected_on) AS action_date
+
+  FROM bookings b
+  JOIN rooms r ON b.room_id = r.room_id
+  JOIN users u_booked ON b.user_id = u_booked.user_id
+  LEFT JOIN users u_approver ON b.approved_by = u_approver.user_id
+  
+  WHERE b.user_id = ? 
+  AND b.booking_date = CURDATE() 
+  AND (b.booking_status = 'pending' OR b.booking_status = 'approved' OR b.booking_status = 'rejected')
+
+  ORDER BY b.slot_id ASC
+`;
+    con.query(sql, [userId], (err, result) => {
+        if (err) {
+            console.error("DB error:", err);
+            return res.status(500).json({ error: "Database query failed", details: err.message });
+        }
         res.json(result);
     });
 });
 
 
-
-// GET check if student has an active booking TODAY
-app.get('/my-bookings-today/:userId', (req, res) => {
-    const userId = req.params.userId;
-    const today = new Date().toISOString().split('T')[0];
-
-    const sql = `
-        SELECT booking_id FROM bookings
-        WHERE user_id = ? 
-        AND booking_date = ? 
-        AND (booking_status = 'Pending' OR booking_status = 'Approved')
-    `;
-
-    con.query(sql, [userId, today], (err, results) => {
-        if (err) return res.status(500).json({ error: err });
-        res.json(results);
-    });
-});
-
-// ✅ Cancel Booking
 app.patch('/bookings/:id/cancel', (req, res) => {
-  const bookingId = req.params.id;
+    const bookingId = req.params.id;
 
-  // ดึงข้อมูลห้องกับ slot ก่อน
-  const selectSql = `SELECT room_id, slot_id FROM bookings WHERE booking_id = ?`;
-  con.query(selectSql, [bookingId], (err, results) => {
-    if (err) return res.status(500).json({ error: 'Database select failed' });
-    if (results.length === 0) return res.status(404).json({ error: 'Booking not found' });
+    const selectSql = `SELECT room_id, slot_id FROM bookings WHERE booking_id = ?`;
+    con.query(selectSql, [bookingId], (err, results) => {
+        if (err) return res.status(500).json({ error: 'Database select failed' });
+        if (results.length === 0) return res.status(404).json({ error: 'Booking not found' });
 
-    const { room_id, slot_id } = results[0];
+        const { room_id, slot_id } = results[0];
 
-    // อัปเดต booking_status
-    const updateSql = `UPDATE bookings SET booking_status = 'Cancelled' WHERE booking_id = ?`;
-    con.query(updateSql, [bookingId], (err) => {
-      if (err) return res.status(500).json({ error: 'Booking update failed' });
+        const updateSql = `UPDATE bookings SET booking_status = 'Cancelled' WHERE booking_id = ?`;
+        con.query(updateSql, [bookingId], (err) => {
+            if (err) return res.status(500).json({ error: 'Booking update failed' });
 
-      // ✅ ปล่อย slot กลับไปเป็น free (optional ถ้าใช้ room_status)
-      const releaseSql = `UPDATE rooms SET room_status = 'Free' WHERE room_id = ?`;
-      con.query(releaseSql, [room_id], (err2) => {
-        if (err2) return res.status(500).json({ error: 'Room update failed' });
+            const releaseSql = `UPDATE rooms SET room_status = 'Free' WHERE room_id = ?`;
+            con.query(releaseSql, [room_id], (err2) => {
+                if (err2) return res.status(500).json({ error: 'Room update failed' });
 
-        res.json({ message: 'Booking cancelled and room freed' });
-      });
+                res.json({ message: 'Booking cancelled and room freed' });
+            });
+        });
     });
-  });
 });
 
 

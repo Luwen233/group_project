@@ -114,7 +114,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
     try {
       final url = Uri.http(
-        '172.27.1.70:3000',
+        '172.16.10.111:3000',
         '/bookings',
       ); // CHANGE if not emulator
       final res = await http.post(

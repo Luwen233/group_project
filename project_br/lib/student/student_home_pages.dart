@@ -21,6 +21,8 @@ class _StudentHomePagesState extends State<StudentHomePages> {
   String _username = 'Student';
   int _userId = 0;
   bool _hasActiveBooking = false;
+  int? _myBookingRoomId;
+  String _myBookingStatus = '';
 
   @override
   void initState() {
@@ -61,16 +63,29 @@ class _StudentHomePagesState extends State<StudentHomePages> {
   Future<void> _checkMyBookingStatus() async {
     try {
       final uri = Uri.http(
-        '172.27.1.70:3000',
-        '/my-bookings-today/$_userId',
-      ); //CHANGE IPs
+        '172.16.10.111:3000',
+        '/bookings/user/$_userId/today',
+      );
       final res = await http.get(uri).timeout(const Duration(seconds: 5));
 
       if (res.statusCode == 200) {
         final List data = jsonDecode(res.body);
+        print("ssssssssssssssssssssssss");
+        print(data);
         if (mounted) {
           setState(() {
-            _hasActiveBooking = data.isNotEmpty;
+            if (data.isNotEmpty) {
+              final myBooking = data[0];
+              _hasActiveBooking = true;
+              _myBookingRoomId = myBooking['room_id'] as int?;
+
+              _myBookingStatus = (myBooking['status']?.toString() ?? 'pending')
+                  .toLowerCase();
+            } else {
+              _hasActiveBooking = false;
+              _myBookingRoomId = null;
+              _myBookingStatus = '';
+            }
           });
         }
       }
@@ -78,14 +93,12 @@ class _StudentHomePagesState extends State<StudentHomePages> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Error: $e")));
-    } finally {
-      setState(() => _isWaiting = false);
     }
   }
 
   Future<void> _fetchRooms() async {
     try {
-      final uri = Uri.http('172.27.1.70:3000', '/rooms'); //CHANGE IPs
+      final uri = Uri.http('172.16.10.111:3000', '/rooms'); //CHANGE IPs
       final res = await http.get(uri).timeout(const Duration(seconds: 10));
 
       if (res.statusCode == 200) {
@@ -284,10 +297,44 @@ class _StudentHomePagesState extends State<StudentHomePages> {
                         ),
                     itemBuilder: (context, index) {
                       final room = _filteredRooms()[index];
-                      final isFree =
-                          (room['status'] as String).toLowerCase() == 'free';
+                      final int currentRoomId = room['id'];
+                      final String generalStatus = (room['status'] as String)
+                          .toLowerCase();
+                      final bool isMyActiveBooking =
+                          (currentRoomId == _myBookingRoomId) &&
+                          _hasActiveBooking;
 
-                      final bool canTap = isFree && !_hasActiveBooking;
+                      String displayStatus;
+                      Color displayColor;
+                      bool canTap;
+
+                      if (isMyActiveBooking) {
+                        if (_myBookingStatus == 'pending') {
+                          displayStatus = 'Pending';
+                          displayColor = Colors.yellow[700]!;
+                        } else {
+                          // 'approved'
+                          displayStatus = 'Reserved';
+                          displayColor = const Color(0xff3BCB53);
+                        }
+                        canTap = false;
+                      } else {
+                        if (generalStatus == 'free') {
+                          if (_hasActiveBooking) {
+                            displayStatus = 'Free';
+                            displayColor = Colors.grey[400]!;
+                            canTap = false;
+                          } else {
+                            displayStatus = 'Free';
+                            displayColor = const Color(0xff3BCB53);
+                            canTap = true;
+                          }
+                        } else {
+                          displayStatus = room['status'] as String;
+                          displayColor = const Color(0xff4E534E);
+                          canTap = false;
+                        }
+                      }
 
                       final imageValue = (room['image'] as String?) ?? '';
                       final isNetworkImage = imageValue.startsWith('http');
@@ -322,7 +369,8 @@ class _StudentHomePagesState extends State<StudentHomePages> {
                       }
 
                       return GestureDetector(
-                        onTap: canTap
+                        onTap:
+                            canTap // 👈 Use new variable
                             ? () async {
                                 final changed = await Navigator.push<bool>(
                                   context,
@@ -336,9 +384,8 @@ class _StudentHomePagesState extends State<StudentHomePages> {
 
                                 if (!mounted) return;
 
-                                // Refresh ONLY if detail page returned true (i.e., after booking)
                                 if (changed == true) {
-                                  // refresh quietly—no spinner/flicker
+                                  // Refresh BOTH parts
                                   await _fetchRooms();
                                   await _checkMyBookingStatus();
                                   if (mounted) setState(() {});
@@ -393,15 +440,11 @@ class _StudentHomePagesState extends State<StudentHomePages> {
                                       vertical: 5,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: isFree
-                                          ? (canTap
-                                                ? const Color(0xff3BCB53)
-                                                : Colors.grey[400])
-                                          : const Color(0xff4E534E),
+                                      color: displayColor,
                                       borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: Text(
-                                      room['status'] as String,
+                                      displayStatus,
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w600,
