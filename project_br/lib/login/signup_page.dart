@@ -3,6 +3,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import 'package:project_br/api_config.dart';
 import 'login_page.dart';
 
 class SignUpPage extends StatefulWidget {
@@ -29,8 +30,7 @@ class _SignUpPageState extends State<SignUpPage> {
       return;
     }
 
-    //final url = Uri.parse('http://172.16.10.240:3000/auth/register');
-    final url = Uri.parse('http://172.16.10.111:3000/auth/register');
+    final url = Uri.parse('${ApiConfig.baseUrl}/auth/register');
     try {
       final response = await http.post(
         url,

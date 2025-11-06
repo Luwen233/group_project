@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
+import 'package:project_br/api_config.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -113,9 +114,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     setState(() => _submitting = true);
 
     try {
-      final url = Uri.http(
-        '172.16.10.111:3000',
-        '/bookings',
+      final url = Uri.parse(
+        '${ApiConfig.baseUrl}/bookings',
       ); // CHANGE if not emulator
       final res = await http.post(
         url,

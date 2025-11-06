@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:project_br/api_config.dart';
 import 'package:project_br/login/login_page.dart';
 import 'package:project_br/student/student_room_detail_pages.dart';
 import 'package:intl/intl.dart';
@@ -62,9 +63,8 @@ class _StudentHomePagesState extends State<StudentHomePages> {
 
   Future<void> _checkMyBookingStatus() async {
     try {
-      final uri = Uri.http(
-        '172.16.10.111:3000',
-        '/bookings/user/$_userId/today',
+      final uri = Uri.parse(
+        '${ApiConfig.baseUrl}/bookings/user/$_userId/today',
       );
       final res = await http.get(uri).timeout(const Duration(seconds: 5));
 

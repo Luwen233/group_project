@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:project_br/api_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class StudentBookingPages extends StatefulWidget {
@@ -16,15 +17,12 @@ class _StudentBookingPagesState extends State<StudentBookingPages> {
   bool _isLoading = true;
   String? _error;
 
-  final String baseUrl = "http://172.16.10.111:3000";
-
   @override
   void initState() {
     super.initState();
     _fetchBookings();
   }
 
-  // ⭐️ 3. เพิ่มฟังก์ชันแปลง ID เป็นเวลา
   String _mapSlotIdToTime(int? slotId) {
     switch (slotId) {
       case 1:
@@ -51,9 +49,8 @@ class _StudentBookingPagesState extends State<StudentBookingPages> {
       final userId = prefs.getInt('user_id');
       if (userId == null) throw Exception("No user ID found");
 
-      // ⭐️ 4. FIX: เรียก Endpoint "today" ที่ถูกต้อง (แก้ปัญหา Timezone)
       final response = await http.get(
-        Uri.parse('$baseUrl/bookings/user/$userId/today'),
+        Uri.parse('${ApiConfig.baseUrl}/bookings/user/$userId/today'),
       );
 
       if (response.statusCode == 200) {
@@ -73,9 +70,8 @@ class _StudentBookingPagesState extends State<StudentBookingPages> {
 
   Future<void> _cancelBooking(int bookingId) async {
     try {
-      // ⭐️ 5. FIX: API Path นี้ถูกต้องแล้ว (จากไฟล์ app.js)
       final response = await http.patch(
-        Uri.parse('$baseUrl/bookings/$bookingId/cancel'),
+        Uri.parse('${ApiConfig.baseUrl}/bookings/$bookingId/cancel'),
       );
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -84,7 +80,7 @@ class _StudentBookingPagesState extends State<StudentBookingPages> {
             backgroundColor: Colors.grey,
           ),
         );
-        _fetchBookings(); // รีเฟรช (รายการจะหายไป -> กลายเป็น Empty)
+        _fetchBookings();
       } else {
         throw Exception("Failed to cancel (${response.statusCode})");
       }
@@ -152,7 +148,6 @@ class _StudentBookingPagesState extends State<StudentBookingPages> {
   // ================= UI ====================
   @override
   Widget build(BuildContext context) {
-    // ⭐️ 7. FIX: ลบ TabController ทิ้ง
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFFF7F7F7),
@@ -162,7 +157,6 @@ class _StudentBookingPagesState extends State<StudentBookingPages> {
           'My Books',
           style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
-        // ⭐️ 8. FIX: เอา TabBar (bottom) ออก, ใส่ "Upcoming" กลับมา
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(67),
           child: Column(

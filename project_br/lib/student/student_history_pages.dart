@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:project_br/api_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class StudentHistoryPages extends StatefulWidget {
@@ -67,7 +68,7 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
         throw Exception("User ID not found. Please log in again.");
       }
 
-      final uri = Uri.http('172.16.10.111:3000', '/bookings/user/$userId');
+      final uri = Uri.parse('${ApiConfig.baseUrl}/bookings/user/$userId');
       final res = await http.get(uri).timeout(const Duration(seconds: 10));
 
       if (res.statusCode == 200) {
