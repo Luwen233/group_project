@@ -72,12 +72,12 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
 
       if (res.statusCode == 200) {
         final List data = jsonDecode(res.body);
-        print("--- HISTORY PAGE: RAW DATA FROM SERVER ---");
-        print(data);
         setState(() {
           _bookings = data.map<Map<String, dynamic>>((b) {
-            final String dateFromServer = (b['booking_date'] ?? 'N/A').toString();
-            final String statusFromServer = (b['status'] ?? 'unknown').toString();
+            final String dateFromServer = (b['booking_date'] ?? 'N/A')
+                .toString();
+            final String statusFromServer = (b['status'] ?? 'unknown')
+                .toString();
 
             return {
               'id': b['id'].toString(),
@@ -110,15 +110,14 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
   }
 
   List<Map<String, dynamic>> _getFilteredBookings(String status) {
-    
     final List<Map<String, dynamic>> historyBookings = _bookings
-        .where(_isHistoryItem) 
+        .where(_isHistoryItem)
         .toList();
 
     if (status == 'All') {
       return historyBookings;
     }
-    
+
     return historyBookings.where((b) => b['status'] == status).toList();
   }
 
@@ -179,9 +178,7 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
                   child: SizedBox(
                     height: 160,
                     width: double.infinity,
-                    child: _buildSafeImage(
-                      booking['image'],
-                    ),
+                    child: _buildSafeImage(booking['image']),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -292,7 +289,7 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
     final imageName = (imageValue as String?) ?? '';
     final localAsset = imageName.isNotEmpty
         ? 'assets/images/$imageName'
-        : 'assets/images/placeholder.png'; 
+        : 'assets/images/placeholder.png';
 
     return Image.asset(
       localAsset,
@@ -342,15 +339,12 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
           ),
           Container(
             height: 120,
-            width:
-                double.infinity,
+            width: double.infinity,
             child: ClipRRect(
               borderRadius: const BorderRadius.vertical(
                 bottom: Radius.circular(10),
               ),
-              child: _buildSafeImage(
-                booking['image'],
-              ), 
+              child: _buildSafeImage(booking['image']),
             ),
           ),
           Padding(
