@@ -1,6 +1,6 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class StudentBookingPages extends StatefulWidget {
@@ -11,37 +11,62 @@ class StudentBookingPages extends StatefulWidget {
 }
 
 class _StudentBookingPagesState extends State<StudentBookingPages> {
-  List<dynamic> _bookings = [];
+  List<Map<String, dynamic>> _pendingBookings = [];
   bool _isLoading = true;
   String? _error;
+  int? _userId;
 
-  final String baseUrl = "http://172.27.1.70:3000"; // ✅ เปลี่ยนเป็น IP Server ของคุณ
+  final String serverIP = "172.27.1.70:3000"; // 🧩 เปลี่ยน IP ตรงนี้ให้ตรงกับ server ของคุณ
 
   @override
   void initState() {
     super.initState();
-    _fetchBookings();
+    _loadUserAndBookings();
   }
 
-  Future<void> _fetchBookings() async {
+  Future<void> _loadUserAndBookings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _userId = prefs.getInt('user_id');
+      if (_userId == null) {
+        setState(() => _error = "User not found. Please login again.");
+        return;
+      }
+      await _loadBookings();
+    } catch (e) {
+      setState(() => _error = e.toString());
+    }
+  }
+
+  Future<void> _loadBookings() async {
     setState(() {
       _isLoading = true;
       _error = null;
     });
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getInt('user_id');
-      if (userId == null) throw Exception("No user ID found");
+      final uri = Uri.http(serverIP, '/bookings/user/$_userId');
+      final res = await http.get(uri).timeout(const Duration(seconds: 10));
 
-      final response = await http.get(Uri.parse('$baseUrl/bookings/user/$userId'));
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+      if (res.statusCode == 200) {
+        final List data = jsonDecode(res.body);
         setState(() {
-          _bookings = List<Map<String, dynamic>>.from(data);
+          _pendingBookings = data
+              .map<Map<String, dynamic>>((b) => {
+                    'id': b['booking_id'].toString(),
+                    'roomName': b['room_name'] ?? 'Unknown Room',
+                    'image': 'assets/images/room1.jpg',
+                    'date': b['booking_date'] ?? '',
+                    'time': '${b['start_time'] ?? ''} - ${b['end_time'] ?? ''}',
+                    'name': b['user_name'] ?? '',
+                    'bookingDate': b['created_at'] ?? '',
+                    'status': b['booking_status'] ?? '',
+                  })
+              .where((b) => b['status'] == 'Pending')
+              .toList();
         });
       } else {
-        throw Exception('Failed to load booking (${response.statusCode})');
+        setState(() => _error = 'Server error: ${res.statusCode}');
       }
     } catch (e) {
       setState(() => _error = e.toString());
@@ -50,52 +75,69 @@ class _StudentBookingPagesState extends State<StudentBookingPages> {
     }
   }
 
-  Future<void> _cancelBooking(int bookingId) async {
+  Future<void> _cancelBooking(Map<String, dynamic> booking) async {
     try {
-      final response = await http.patch(Uri.parse('$baseUrl/bookings/$bookingId/cancel'));
-      if (response.statusCode == 200) {
+      final uri = Uri.http(serverIP, '/bookings/cancel/${booking['id']}');
+      final res = await http.put(uri).timeout(const Duration(seconds: 10));
+
+      if (res.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Booking cancelled successfully'),
+            content: Text('Booking cancelled successfully.'),
             backgroundColor: Colors.grey,
           ),
         );
-        _fetchBookings();
+        _loadBookings(); // refresh list
       } else {
-        throw Exception("Failed to cancel (${response.statusCode})");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to cancel booking (${res.statusCode})'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
 
-  void _confirmCancelDialog(Map<String, dynamic> booking) {
+  void _showCancelConfirmationDialog(
+      BuildContext context, Map<String, dynamic> bookingToCancel) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        icon: const Icon(Icons.warning_rounded, size: 100, color: Colors.amber),
-        title: const Text('Confirm Cancellation'),
-        content: const Text(
-          'Are you sure you want to cancel this booking request?',
-          textAlign: TextAlign.center,
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('No')),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _cancelBooking(booking['id']);
-            },
-            child: const Text('Yes'),
+      builder: (BuildContext context) {
+        return AlertDialog(
+          icon: const Icon(Icons.warning_rounded, size: 100, color: Colors.amber),
+          title: const Text('Confirm Cancellation'),
+          content: const Text(
+            'Are you sure you want to cancel this booking request?',
+            textAlign: TextAlign.center,
           ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              child: const Text('No'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            TextButton(
+              child: const Text('Yes'),
+              onPressed: () {
+                Navigator.of(context).pop();
+                _cancelBooking(bookingToCancel);
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 
-  // ================= UI ====================
+  // -------------------- UI Section --------------------
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -103,8 +145,10 @@ class _StudentBookingPagesState extends State<StudentBookingPages> {
         backgroundColor: const Color(0xFFF7F7F7),
         elevation: 3,
         shadowColor: Colors.black54,
-        title: const Text('My Books',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'My Books',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(67),
           child: Column(
@@ -113,11 +157,14 @@ class _StudentBookingPagesState extends State<StudentBookingPages> {
               Divider(thickness: 1, height: 0),
               Padding(
                 padding: EdgeInsets.all(16),
-                child: Text('Upcoming',
-                    style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xff3C9CBF))),
+                child: Text(
+                  'Upcoming',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xff3C9CBF),
+                  ),
+                ),
               ),
             ],
           ),
@@ -127,49 +174,38 @@ class _StudentBookingPagesState extends State<StudentBookingPages> {
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? _buildErrorState()
-              : _bookings.isEmpty
-                  ? _buildEmptyState()
-                  : Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: _buildBookingList(),
-                    ),
+              : Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: _pendingBookings.isEmpty
+                      ? _buildEmptyState()
+                      : _buildBookingList(),
+                ),
     );
   }
 
-  Widget _buildErrorState() => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, color: Colors.red, size: 60),
-            const SizedBox(height: 10),
-            Text('Error: $_error', textAlign: TextAlign.center),
-            const SizedBox(height: 10),
-            ElevatedButton(onPressed: _fetchBookings, child: const Text('Retry')),
-          ],
-        ),
-      );
-
-  Widget _buildEmptyState() => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.calendar_month_outlined, size: 60, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            const Text('No upcoming books yet.',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black54)),
-            const SizedBox(height: 8),
-            Text('Browse Rooms On The Home Page To Reserve One.',
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                textAlign: TextAlign.center),
-          ],
-        ),
-      );
+  Widget _buildErrorState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, color: Colors.red, size: 60),
+          const SizedBox(height: 10),
+          Text('Error: $_error', textAlign: TextAlign.center),
+          const SizedBox(height: 10),
+          ElevatedButton(
+            onPressed: _loadBookings,
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildBookingList() {
     return ListView.builder(
-      itemCount: _bookings.length,
+      itemCount: _pendingBookings.length,
       itemBuilder: (context, index) {
-        final booking = _bookings[index];
+        final booking = _pendingBookings[index];
         return _buildBookingCard(booking);
       },
     );
@@ -183,46 +219,57 @@ class _StudentBookingPagesState extends State<StudentBookingPages> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text('Request ID: ${booking['id']}',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                decoration: BoxDecoration(
-                  color: const Color(0xffF4E75A),
-                  borderRadius: BorderRadius.circular(20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Request ID: ${booking['id']}',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xffF4E75A), // pending = yellow
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    booking['status'],
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
                 ),
-                child: Text(
-                  booking['status'] ?? 'Unknown',
-                  style: const TextStyle(
-                      color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12),
-                ),
-              ),
-            ]),
+              ],
+            ),
             const Divider(height: 24),
             Row(
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.asset('assets/images/room1.jpg',
-                      width: 150, height: 150, fit: BoxFit.cover),
+                  child: Image.asset(
+                    booking['image'],
+                    width: 150,
+                    height: 150,
+                    fit: BoxFit.cover,
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(booking['room_name'] ?? 'Unknown Room',
-                          style: const TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text(
+                        booking['roomName'],
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
                       const SizedBox(height: 8),
-                      _buildDetailRow(label: 'Date', value: booking['booking_date'] ?? ''),
+                      _buildDetailRow(label: 'Date', value: booking['date']),
+                      _buildDetailRow(label: 'Time', value: booking['time']),
+                      _buildDetailRow(label: 'Booking By', value: booking['name']),
                       _buildDetailRow(
-                          label: 'Time',
-                          value:
-                              '${booking['start_time'] ?? ''} - ${booking['end_time'] ?? ''}'),
-                      _buildDetailRow(
-                          label: 'Booking By', value: booking['booked_by_name'] ?? ''),
+                          label: 'Booking Date', value: booking['bookingDate']),
                     ],
                   ),
                 ),
@@ -232,13 +279,14 @@ class _StudentBookingPagesState extends State<StudentBookingPages> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () => _confirmCancelDialog(booking),
+                onPressed: () => _showCancelConfirmationDialog(context, booking),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xffDB5151),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10)),
                 ),
-                child: const Text('Cancel', style: TextStyle(color: Colors.white)),
+                child: const Text('Cancel',
+                    style: TextStyle(color: Colors.white)),
               ),
             ),
           ],
@@ -247,16 +295,44 @@ class _StudentBookingPagesState extends State<StudentBookingPages> {
     );
   }
 
-  Widget _buildDetailRow({required String label, required String value}) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-            Text(value,
-                style: const TextStyle(
-                    color: Colors.black, fontSize: 12, fontWeight: FontWeight.bold)),
-          ],
-        ),
-      );
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.calendar_month_outlined,
+              size: 60, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          const Text(
+            'No upcoming books yet.',
+            style: TextStyle(
+                fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black54),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Browse Rooms On The Home Page To Reserve One.',
+            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow({required String label, required String value}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+          Text(
+            value,
+            style: const TextStyle(
+                color: Colors.black, fontSize: 12, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
 }
