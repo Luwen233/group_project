@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:project_br/student/booking_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -29,21 +27,17 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
     Map<String, dynamic> booking,
   ) {
     final String status = booking['status'] ?? 'Cancelled';
-    Color statusColor;
     String statusActionText;
 
     switch (status) {
       case 'Approved':
-        statusColor = Color(0xff3BCB53);
         statusActionText = 'Approved On';
         break;
       case 'Rejected':
-        statusColor = Color(0xffDB5151);
         statusActionText = 'Rejected On';
         break;
       case 'Cancelled':
       default:
-        statusColor = Color(0xff4E534E);
         statusActionText = 'Cancelled On';
     }
 

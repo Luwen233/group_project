@@ -58,7 +58,10 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   // Show bottom sheet
-  void _showMoreDetailsSheet(BuildContext context, Map<String, dynamic> booking) {
+  void _showMoreDetailsSheet(
+    BuildContext context,
+    Map<String, dynamic> booking,
+  ) {
     final String status = booking['status'] ?? 'Rejected';
     Color statusColor;
     String statusActionText;
@@ -86,12 +89,17 @@ class _HistoryPageState extends State<HistoryPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Request ID: ${booking['id']}',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+              Text(
+                'Request ID: ${booking['id']}',
+                style: TextStyle(color: Colors.grey[600], fontSize: 14),
+              ),
               const SizedBox(height: 16),
               Text(
                 booking['roomName'] ?? 'Unknown Room',
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
               Row(
@@ -170,9 +178,14 @@ class _HistoryPageState extends State<HistoryPage> {
       children: [
         Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
         const SizedBox(height: 4),
-        Text(value,
-            style: const TextStyle(
-                fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black)),
+        Text(
+          value,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+            color: Colors.black,
+          ),
+        ),
       ],
     );
   }
@@ -187,9 +200,13 @@ class _HistoryPageState extends State<HistoryPage> {
           children: [
             Icon(Icons.history_toggle_off, size: 60, color: Colors.grey[400]),
             const SizedBox(height: 16),
-            Text('No ${status.toLowerCase()} history yet.',
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, color: Colors.black54)),
+            Text(
+              'No ${status.toLowerCase()} history yet.',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.black54,
+              ),
+            ),
           ],
         ),
       );
@@ -205,17 +222,14 @@ class _HistoryPageState extends State<HistoryPage> {
   Widget _buildHistoryCard(Map<String, dynamic> booking) {
     final String status = booking['status'];
     Color statusColor;
-    String statusActionText;
 
     switch (status) {
       case 'Approved':
         statusColor = const Color(0xff3BCB53);
-        statusActionText = 'Approved On';
         break;
       case 'Rejected':
       default:
         statusColor = const Color(0xffDB5151);
-        statusActionText = 'Rejected On';
     }
 
     return Card(
@@ -229,10 +243,14 @@ class _HistoryPageState extends State<HistoryPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Request ID: ${booking['id']}',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                Text(booking['date'],
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  'Request ID: ${booking['id']}',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                ),
+                Text(
+                  booking['date'],
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
               ],
             ),
           ),
@@ -267,10 +285,14 @@ class _HistoryPageState extends State<HistoryPage> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Center(
-                        child: Text(status,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold))),
+                      child: Text(
+                        status,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -281,18 +303,21 @@ class _HistoryPageState extends State<HistoryPage> {
                       side: BorderSide(color: Colors.grey[400]!),
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                     child: const Text(
                       'More',
                       style: TextStyle(
-                          fontWeight: FontWeight.bold, color: Colors.black54),
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black54,
+                      ),
                     ),
                   ),
                 ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );
@@ -304,8 +329,10 @@ class _HistoryPageState extends State<HistoryPage> {
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('All History',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22)),
+          title: const Text(
+            'All History',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
+          ),
           bottom: TabBar(
             labelColor: const Color(0xff3C9CBF),
             unselectedLabelColor: const Color(0xff4E534E),

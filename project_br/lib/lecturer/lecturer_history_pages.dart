@@ -59,7 +59,6 @@ class _LecturerHistoryPagesState extends State<LecturerHistoryPages>
   // Function to show the btm sheet (จาก StudentHistoryPages)
   void _showMoreDetailsSheet(BuildContext context, BookingRequest booking) {
     final String status = booking.status.toLowerCase();
-    Color statusColor;
     String statusActionText;
     String actionDate = '';
 
@@ -71,16 +70,13 @@ class _LecturerHistoryPagesState extends State<LecturerHistoryPages>
 
     switch (status) {
       case 'approved':
-        statusColor = Color(0xff3BCB53);
         statusActionText = 'Approved On';
         break;
       case 'rejected':
-        statusColor = Color(0xffDB5151);
         statusActionText = 'Rejected On';
         break;
       case 'cancelled': // (เผื่อไว้ แต่จะไม่ถูกเรียกใช้)
       default:
-        statusColor = Color(0xff4E534E);
         statusActionText = 'Cancelled On';
     }
 
