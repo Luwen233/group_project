@@ -61,7 +61,7 @@ class _StudentHomePagesState extends State<StudentHomePages> {
   Future<void> _checkMyBookingStatus() async {
     try {
       final uri = Uri.http(
-        '127.0.0.1:3000',
+        '192.168.1.118:3000',
         '/my-bookings-today/$_userId',
       ); //CHANGE IPs
       final res = await http.get(uri).timeout(const Duration(seconds: 5));

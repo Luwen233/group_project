@@ -24,18 +24,18 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> login() async {
     setState(() => isLoading = true);
 
-    // final url = Uri.parse('http://192.168.174.1:3000/auth/login');
-    // final url = Uri.parse('http://127.0.0.1:3000/auth/login');
-
     try {
+      // ⭐️ [FIXED] แก้ไข Conflict ตรงนี้ ⭐️
+      // เราจะใช้ 10.0.2.2 (Emulator IP)
       final response = await http.post(
-        Uri.parse('http://127.0.0.1:3000/auth/login'),
+        Uri.parse('http://10.0.2.2:3000/auth/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           "username": usernameController.text.trim(),
           "password": passwordController.text.trim(),
         }),
       );
+
       final data = jsonDecode(response.body);
       if (response.statusCode == 200 && data['token'] != null) {
         // เก็บ token ไว้ใน SharedPreferences
@@ -51,11 +51,13 @@ class _LoginPageState extends State<LoginPage> {
         await prefs.setInt('user_id', userId);
         await prefs.setString('username', username);
 
+        if (!mounted) return; // ⭐️ Add guard
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text("Login Successful!")));
 
         // นำทางตาม role
+        if (!mounted) return; // ⭐️ Add guard
         if (data['role'] == 'Staff') {
           Navigator.pushReplacement(
             context,
@@ -73,16 +75,21 @@ class _LoginPageState extends State<LoginPage> {
           );
         }
       } else {
+        if (!mounted) return; // ⭐️ Add guard
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(data['message'] ?? 'Login failed')),
         );
       }
     } catch (e) {
+      if (!mounted) return; // ⭐️ Add guard
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Error: $e")));
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) {
+        // ⭐️ Add guard
+        setState(() => isLoading = false);
+      }
     }
   }
 
@@ -115,7 +122,6 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
             ),
-
             Transform.translate(
               offset: const Offset(0.0, -94.0), // Pulls everything up
               child: Column(
@@ -134,7 +140,6 @@ class _LoginPageState extends State<LoginPage> {
                       ],
                     ),
                   ),
-
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 32),
                     child: Column(
@@ -214,7 +219,6 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                         ),
                         const SizedBox(height: 16),
-
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [

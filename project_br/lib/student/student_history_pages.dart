@@ -1,5 +1,8 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:project_br/student/booking_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class StudentHistoryPages extends StatefulWidget {
   const StudentHistoryPages({super.key});
@@ -9,8 +12,8 @@ class StudentHistoryPages extends StatefulWidget {
 }
 
 class _StudentHistoryPagesState extends State<StudentHistoryPages> {
-
-//filter list status
+  int? savedUserID;
+  //filter list status
   List<Map<String, dynamic>> _getFilteredBookings(String status) {
     if (status == 'All') {
       return BookingService.bookings
@@ -133,7 +136,7 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
               const SizedBox(height: 20),
 
               // Don't show notes if Cancelled
-              if (status != 'Cancelled') 
+              if (status != 'Cancelled')
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -201,7 +204,41 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
       },
     );
   }
+
   @override
+  void initState() {
+    super.initState();
+    _init(); // เรียกตัวกลางแทน
+  }
+
+  Future<void> _init() async {
+    await _loadUserData(); // รอให้ได้ savedUserID ก่อน
+    await _loadLogs(); // แล้วค่อยโหลด logs ของ user
+  }
+
+  Future<void> _loadUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      savedUserID = prefs.getInt('user_id'); // อาจเป็น null ได้ ถ้าไม่เคยเซฟ
+    });
+  }
+
+  Future<void> _loadLogs() async {
+    try {
+      if (savedUserID == null) {
+        // ป้องกัน null: จะเลือกโหลด all logs หรือ return เลยก็ได้
+        // await BookingService.fetchAllLogs();
+        return;
+      }
+      // ใช้ user id จริง แทน '1' ที่ฮาร์ดโค้ด
+      await BookingService.fetchLogsByUser(savedUserID!.toString());
+      setState(() {});
+    } catch (e) {
+      debugPrint('Load logs error: $e');
+    }
+  }
+
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 4,

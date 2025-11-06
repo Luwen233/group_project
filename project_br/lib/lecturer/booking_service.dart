@@ -1,120 +1,180 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+// ⭐️⭐️⭐️ เพิ่มบรรทัดนี้ ⭐️⭐️⭐️
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:project_br/lecturer/booking_model.dart';
 import 'package:project_br/lecturer/booking_notifiers.dart';
-import 'dart:math'; // สำหรับสร้าง ID สุ่ม
-import 'package:intl/intl.dart'; // สำหรับ Format วันที่
-import 'package:flutter/foundation.dart';
+import 'package:project_br/lecturer/rooms_notifier.dart';
 
-// --- Service Logic ---
+/// ⚠️ สำคัญสำหรับ Emulator (10.0.2.2 คือ localhost ของเครื่อง Host)
+const String _baseUrl = 'http://10.0.2.2:3000';
 
-void approveRequest(BookingRequest request) {
-  final now = DateTime.now();
-  // ⭐️ เปลี่ยน Format วันที่ ให้แสดงแค่ วัน เดือน ปี
-  final formattedDate = DateFormat('MMM d, yyyy').format(now);
+/// ---------------------------------------------------------------------------
+/// FETCH ROOMS
+/// ---------------------------------------------------------------------------
+Future<void> fetchRooms() async {
+  final url = Uri.parse('$_baseUrl/rooms');
+  print("📡 FETCH ROOMS → $url");
 
-  // สร้าง Request ใหม่ที่เป็น Approved และย้ายไปยัง History
-  final approvedRequest = request.copyWith(
-    status: 'approved',
-    processedBy: 'System', // ตัวอย่าง: คนที่ Approve คือ System
-    approvedBy:
-        'Mr. John', // ⭐️ เพิ่ม approvedBy (อาจจะเปลี่ยนเป็น Lecturer ID จริง)
-    approvedOn: formattedDate, // เก็บ String ที่ Format แล้ว
-    rejectedOn: null,
-    rejectReason: null,
-    decisionTimestamp: now,
-  );
+  try {
+    final res = await http.get(url);
+    if (res.statusCode == 200) {
+      final List data = jsonDecode(res.body);
 
-  // อัปเดต Notifiers
-  final currentPending = List<BookingRequest>.from(
-    pendingRequestsNotifier.value,
-  );
-  currentPending.removeWhere((req) => req.id == request.id);
-  pendingRequestsNotifier.value = currentPending;
-
-  final currentHistory = List<BookingRequest>.from(
-    historyRequestsNotifier.value,
-  );
-  currentHistory.insert(0, approvedRequest);
-  historyRequestsNotifier.value = currentHistory;
+      roomsNotifier.value = data.map((room) {
+        final img = (room['image'] ?? '').toString().trim();
+        return {
+          'id': room['room_id'],
+          'name': room['room_name'] ?? 'Unnamed Room',
+          'status':
+              (room['room_status'] ?? '').toString().toLowerCase() == 'free'
+              ? 'Free'
+              : 'Disable',
+          'image': img.isEmpty ? 'assets/images/default_room.png' : img,
+        };
+      }).toList();
+    } else {
+      print('❌ fetchRooms() HTTP ${res.statusCode}');
+    }
+  } catch (e) {
+    print('🔥 fetchRooms() error: $e');
+  }
 }
 
-void rejectRequest(BookingRequest request, String reason) {
-  final now = DateTime.now();
-  // ⭐️ เปลี่ยน Format วันที่ ให้แสดงแค่ วัน เดือน ปี
-  final formattedDate = DateFormat('MMM d, yyyy').format(now);
+/// ---------------------------------------------------------------------------
+/// FETCH PENDING REQUESTS (LECTURER)
+/// ---------------------------------------------------------------------------
+Future<void> fetchPendingRequests() async {
+  final url = Uri.parse('$_baseUrl/bookings/requests');
+  print("📡 FETCH REQUESTS → $url");
 
-  // สร้าง Request ใหม่ที่เป็น Rejected และย้ายไปยัง History
-  final rejectedRequest = request.copyWith(
-    status: 'rejected',
-    rejectReason: reason.isNotEmpty ? reason : null,
-    processedBy: 'Mr. John', // หรือ ID ของ Lecturer
-    rejectedOn: formattedDate, // เก็บ String ที่ Format แล้ว
-    approvedOn: null,
-    approvedBy: null, // ⭐️ ตรวจสอบว่า approvedBy เป็น null ตอน Reject
-    decisionTimestamp: now,
-  );
+  try {
+    final res = await http.get(url);
+    print("🔍 STATUS: ${res.statusCode}");
+    print("📥 RESPONSE: ${res.body}");
 
-  // อัปเดต Notifiers
-  final currentPending = List<BookingRequest>.from(
-    pendingRequestsNotifier.value,
-  );
-  currentPending.removeWhere((req) => req.id == request.id);
-  pendingRequestsNotifier.value = currentPending;
+    if (res.statusCode == 200) {
+      final List data = jsonDecode(res.body);
 
-  final currentHistory = List<BookingRequest>.from(
-    historyRequestsNotifier.value,
-  );
-  currentHistory.insert(0, rejectedRequest);
-  historyRequestsNotifier.value = currentHistory;
+      // ✅ กรองเฉพาะ pending
+      pendingRequestsNotifier.value = data
+          .map<BookingRequest>((e) => BookingRequest.fromJson(e))
+          .where((b) => b.status == 'pending')
+          .toList();
+
+      print("✅ Updated pendingRequestsNotifier");
+    } else {
+      pendingRequestsNotifier.value = [];
+    }
+  } catch (e) {
+    print('🔥 fetchPendingRequests() error: $e');
+    pendingRequestsNotifier.value = [];
+  }
 }
 
-// --- ฟังก์ชันจำลองการ Booking ใหม่ ---
-void simulateNewBooking() {
-  final random = Random();
-  final DateTime today = DateTime.now();
-  final DateTime futureDateRaw = today.add(
-    Duration(days: random.nextInt(7) + 1),
-  );
-  final String futureDate = DateFormat('E d MMM yyyy').format(futureDateRaw);
+/// ---------------------------------------------------------------------------
+/// APPROVE REQUEST
+/// ---------------------------------------------------------------------------
+Future<void> approveRequest(BookingRequest request) async {
+  final url = Uri.parse('$_baseUrl/bookings/${request.id}/approve');
+  print("✅ APPROVE → $url");
 
-  final List<String> availableTimeSlots = [
-    '08:00 - 10:00 AM',
-    '10:00 - 12:00 PM',
-    '01:00 - 03:00 PM', // 13:00 - 15:00
-    '03:00 - 05:00 PM', // 15:00 - 17:00
-  ];
-  final String selectedTimeSlot =
-      availableTimeSlots[random.nextInt(availableTimeSlots.length)];
+  // 1. ดึง Token ที่บันทึกไว้
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('token') ?? '';
 
-  final List<Map<String, String>> rooms = [
-    {'name': 'Study Room A', 'image': 'assets/images/room1.jpg'},
-    {'name': 'Law Study Room', 'image': 'assets/images/room2.jpg'},
-    {'name': 'Room B101', 'image': 'assets/images/room3.jpg'},
-    {'name': 'Room B102', 'image': 'assets/images/room4.jpg'},
-  ];
-  final selectedRoom = rooms[random.nextInt(rooms.length)];
+  try {
+    final res = await http.patch(
+      url,
+      // 2. แนบ Token ไปใน Headers
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token', // ⬅️ เพิ่มบรรทัดนี้
+      },
+    );
 
-  final String newId = DateTime.now().millisecondsSinceEpoch
-      .toString()
-      .substring(5);
+    print("🔍 STATUS: ${res.statusCode}");
+    print("📥 RESPONSE: ${res.body}");
 
-  final newRequest = BookingRequest(
-    id: newId,
-    roomName: selectedRoom['name']!,
-    image: selectedRoom['image']!,
-    date: futureDate,
-    time: selectedTimeSlot,
-    bookedBy: 'User ${random.nextInt(100)}',
-    requestedOn: DateFormat('MMM, d, yyyy').format(today),
-    status: 'pending',
-  );
+    if (res.statusCode == 200) {
+      // ⭐️ [ปรับปรุง] เราไม่จำเป็นต้อง fetchPendingRequests() ที่นี่
+      // เพราะ Notifier ในหน้า Request จะ fetch ใหม่อยู่แล้ว
+      // await fetchPendingRequests(); // ⬅️ ลบ/ปิดไปได้
+    }
+  } catch (e) {
+    print('🔥 approveRequest() error: $e');
+  }
+}
 
-  final currentPending = List<BookingRequest>.from(
-    pendingRequestsNotifier.value,
-  );
-  currentPending.insert(0, newRequest);
-  pendingRequestsNotifier.value = currentPending;
+// ⭐️⭐️⭐️ [โค้ด REJECT ใหม่] ⭐️⭐️⭐️
+Future<void> rejectRequest(BookingRequest request, String reason) async {
+  final url = Uri.parse('$_baseUrl/bookings/${request.id}/reject');
+  print("❌ REJECT → $url | reason: $reason");
 
-  if (kDebugMode) {
-    print('Simulated new booking: ${newRequest.id} for ${newRequest.roomName}');
+  // 1. ดึง Token ที่บันทึกไว้
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('token') ?? '';
+
+  try {
+    final res = await http.patch(
+      url,
+      // 2. แนบ Token ไปใน Headers
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token', // ⬅️ เพิ่มบรรทัดนี้
+      },
+      body: jsonEncode({'reject_reason': reason}),
+    );
+
+    print("🔍 STATUS: ${res.statusCode}");
+    print("📥 RESPONSE: ${res.body}");
+
+    if (res.statusCode == 200) {
+      // await fetchPendingRequests(); // ⬅️ ลบ/ปิดไปได้
+    }
+  } catch (e) {
+    print('🔥 rejectRequest() error: $e');
+  }
+}
+
+/// ---------------------------------------------------------------------------
+/// HISTORY (แสดง approved / rejected)
+/// ---------------------------------------------------------------------------
+Future<void> fetchHistoryRequests() async {
+  final url = Uri.parse('$_baseUrl/bookings/history');
+  print("📡 FETCH HISTORY → $url");
+
+  try {
+    final res = await http.get(url);
+
+    print("🔍 STATUS: ${res.statusCode}");
+    print("📥 RESPONSE: ${res.body}");
+
+    if (res.statusCode == 200) {
+      final List data = jsonDecode(res.body);
+
+      historyRequestsNotifier.value = data
+          .map<BookingRequest>((e) => BookingRequest.fromJson(e))
+          .toList();
+    }
+  } catch (e) {
+    print(" fetchHistoryRequests() error: $e");
+  }
+}
+
+/// ---------------------------------------------------------------------------
+/// DASHBOARD SUMMARY
+/// ---------------------------------------------------------------------------
+Future<Map<String, dynamic>> fetchDashboardSummary() async {
+  final url = Uri.parse('$_baseUrl/dashboard/summary');
+  print("📡 FETCH DASHBOARD → $url");
+
+  try {
+    final res = await http.get(url);
+    return jsonDecode(res.body);
+  } catch (e) {
+    print('🔥 fetchDashboardSummary() error: $e');
+    return {};
   }
 }

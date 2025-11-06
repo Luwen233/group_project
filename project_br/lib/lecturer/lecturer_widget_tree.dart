@@ -10,11 +10,11 @@ class LecturerWidgetTree extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ⭐️ เพิ่ม <Widget> ตรงนี้ เพื่อระบุประเภทของ List ให้ชัดเจน
-    final pages = const <Widget>[
-      LecturerHomePages(),
-      LecturerRequestPages(),
-      LecturerHistoryPages(),
+    // ⭐️ [แก้ไข] ลบ 'const' ที่อยู่หน้า <Widget>[] ออก ⭐️
+    final pages = <Widget>[
+      const LecturerHomePages(), // ⭐️ เติม const หน้า Widget แทน
+      const LecturerRequestPages(), // ⭐️ เติม const หน้า Widget แทน
+      const LecturerHistoryPages(), // ⭐️ เติม const หน้า Widget แทน
     ];
 
     return ValueListenableBuilder<int>(
