@@ -81,10 +81,18 @@ class BookingRequest {
     // 7. 'requestedOn' ควรเป็น 'booking_date' เสมอ (วันที่จองมา)
     String requestedOn = (json['booking_date'] ?? '').toString().split('T')[0];
 
+    // 8. แก้ไข room_image ให้มี prefix assets/images/
+    final roomImage = json['room_image']?.toString() ?? '';
+    final imagePath = roomImage.isEmpty
+        ? 'assets/images/default_room.jpg'
+        : (roomImage.startsWith('assets/')
+              ? roomImage
+              : 'assets/images/$roomImage');
+
     return BookingRequest(
       id: json['booking_id'].toString(),
       roomName: json['room_name'] ?? '',
-      image: json['room_image'] ?? 'assets/images/default_room.jpg',
+      image: imagePath,
       date: date,
       time: formattedTime,
       bookedBy: bookedBy,

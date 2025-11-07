@@ -6,9 +6,9 @@ class BookingService {
   // เปลี่ยนเป็น 'static List' ธรรมดา (ไม่ final) เพื่อให้ใส่ค่าจาก API ได้
   static List<Map<String, dynamic>> bookings = [];
 
-  // ใช้ IP ให้ตรงกับ emulator/เครื่องจริง
-  static const String BASE_URL = 'http://192.168.1.118:3000'; 
-  // ถ้า LDPlayer/มือถือจริง ใช้ IP เครื่อง เช่น 'http://192.168.1.23:3000'
+  // ⚠️ สำคัญสำหรับ Android Emulator (10.0.2.2 คือ localhost ของเครื่อง Host)
+  static const String BASE_URL = 'http://10.0.2.2:3000';
+  // ถ้าใช้ LDPlayer/มือถือจริง ต้องเปลี่ยนเป็น IP เครื่อง เช่น 'http://192.168.1.23:3000'
 
   // ====== MOCK: เก็บไว้ใช้ตอนออฟไลน์ก็ได้ ======
   static final List<Map<String, dynamic>> _mock = [
@@ -102,16 +102,22 @@ class BookingService {
   static Map<String, dynamic> _mapRow(Map<String, dynamic> r) {
     // เดา schema ทั่วไป: ปรับชื่อคอลัมน์ตรงนี้ให้ตรงของจริง
     final id = (r['log_id'] ?? r['id'] ?? '').toString();
-    final roomName = (r['room_name'] ?? 'Room ${r['room_id'] ?? ''}').toString();
+    final roomName = (r['room_name'] ?? 'Room ${r['room_id'] ?? ''}')
+        .toString();
     final status = (r['status'] ?? 'Cancelled').toString();
-    final bookedByName = (r['booked_by_name'] ?? r['booked_by'] ?? 'Mr. John').toString();
-    final approver = (r['approved_by_name'] ?? r['approved_by'] ?? '').toString();
-    final reason = (r['reason'] ?? r['request_reason'] ?? 'No reason provided.').toString();
+    final bookedByName = (r['booked_by_name'] ?? r['booked_by'] ?? 'Mr. John')
+        .toString();
+    final approver = (r['approved_by_name'] ?? r['approved_by'] ?? '')
+        .toString();
+    final reason = (r['reason'] ?? r['request_reason'] ?? 'No reason provided.')
+        .toString();
     final lecturerNote = (r['lecturer_note'] ?? r['note'] ?? '').toString();
 
     // วันที่/เวลา
-    final requestedAt = r['requested_at']?.toString() ?? r['date']?.toString() ?? 'N/A';
-    final actionAt = r['action_at']?.toString() ?? r['actionDate']?.toString() ?? '';
+    final requestedAt =
+        r['requested_at']?.toString() ?? r['date']?.toString() ?? 'N/A';
+    final actionAt =
+        r['action_at']?.toString() ?? r['actionDate']?.toString() ?? '';
 
     // เวลาแสดงในบัตร
     final timeText = _composeTime(r);
@@ -122,11 +128,11 @@ class BookingService {
     return {
       'id': id.isEmpty ? '00000' : id,
       'roomName': roomName,
-      'image': imagePath,          // ยังใช้ Image.asset ได้เหมือนเดิม
-      'date': requestedAt,         // ตรงคีย์กับ UI เดิม
-      'time': timeText,            // ตรงคีย์กับ UI เดิม
-      'name': bookedByName,        // 'Booked By'
-      'bookingDate': '',           // ถ้าอยากเติมเวลา request จริง ให้ map เพิ่มเอง
+      'image': imagePath, // ยังใช้ Image.asset ได้เหมือนเดิม
+      'date': requestedAt, // ตรงคีย์กับ UI เดิม
+      'time': timeText, // ตรงคีย์กับ UI เดิม
+      'name': bookedByName, // 'Booked By'
+      'bookingDate': '', // ถ้าอยากเติมเวลา request จริง ให้ map เพิ่มเอง
       'status': status,
       'approver': approver,
       'actionDate': actionAt,

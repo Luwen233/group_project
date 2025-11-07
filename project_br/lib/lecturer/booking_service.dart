@@ -1,14 +1,14 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-// ⭐️⭐️⭐️ เพิ่มบรรทัดนี้ ⭐️⭐️⭐️
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:project_br/config/api_config.dart';
 
 import 'package:project_br/lecturer/booking_model.dart';
 import 'package:project_br/lecturer/booking_notifiers.dart';
 import 'package:project_br/lecturer/rooms_notifier.dart';
 
-/// ⚠️ สำคัญสำหรับ Emulator (10.0.2.2 คือ localhost ของเครื่อง Host)
-const String _baseUrl = 'http://10.0.2.2:3000';
+/// ✅ ใช้ ApiConfig แทน hardcode URL
+String get _baseUrl => ApiConfig.baseUrl;
 
 /// ---------------------------------------------------------------------------
 /// FETCH ROOMS
@@ -24,6 +24,11 @@ Future<void> fetchRooms() async {
 
       roomsNotifier.value = data.map((room) {
         final img = (room['image'] ?? '').toString().trim();
+        // เพิ่ม assets/images/ prefix ถ้ายังไม่มี
+        final imagePath = img.isEmpty
+            ? 'assets/images/default_room.png'
+            : (img.startsWith('assets/') ? img : 'assets/images/$img');
+
         return {
           'id': room['room_id'],
           'name': room['room_name'] ?? 'Unnamed Room',
@@ -31,7 +36,7 @@ Future<void> fetchRooms() async {
               (room['room_status'] ?? '').toString().toLowerCase() == 'free'
               ? 'Free'
               : 'Disable',
-          'image': img.isEmpty ? 'assets/images/default_room.png' : img,
+          'image': imagePath,
         };
       }).toList();
     } else {

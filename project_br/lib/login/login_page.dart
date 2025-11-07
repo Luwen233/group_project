@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
+import 'package:project_br/config/api_config.dart';
 import 'package:project_br/login/signup_page.dart';
 import 'package:project_br/staff/pages/linkpage.dart';
 import 'package:project_br/student/widget_tree.dart';
@@ -24,18 +26,25 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> login() async {
     setState(() => isLoading = true);
 
-    // final url = Uri.parse('http://192.168.174.1:3000/auth/login');
-    // final url = Uri.parse('http://127.0.0.1:3000/auth/login');
-
     try {
-      final response = await http.post(
-        Uri.parse('http://192.168.1.118:3000/auth/login'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          "username": usernameController.text.trim(),
-          "password": passwordController.text.trim(),
-        }),
-      );
+      final response = await http
+          .post(
+            Uri.parse('${ApiConfig.baseUrl}/auth/login'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              "username": usernameController.text.trim(),
+              "password": passwordController.text.trim(),
+            }),
+          )
+          .timeout(Duration(seconds: 10));
+
+      // ตรวจสอบว่า response body ไม่ว่าง
+      if (response.body.isEmpty) {
+        throw Exception(
+          'Server returned empty response. Please check backend server.',
+        );
+      }
+
       final data = jsonDecode(response.body);
       if (response.statusCode == 200 && data['token'] != null) {
         // เก็บ token ไว้ใน SharedPreferences
@@ -77,10 +86,31 @@ class _LoginPageState extends State<LoginPage> {
           SnackBar(content: Text(data['message'] ?? 'Login failed')),
         );
       }
+    } on FormatException catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Invalid response from server. Please check backend."),
+          duration: Duration(seconds: 5),
+        ),
+      );
+    } on TimeoutException catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Connection timeout. Please check if backend server is running on localhost:3000",
+          ),
+          duration: Duration(seconds: 5),
+        ),
+      );
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "Error: Cannot connect to server. Please ensure backend is running.\n$e",
+          ),
+          duration: Duration(seconds: 5),
+        ),
+      );
     } finally {
       setState(() => isLoading = false);
     }
