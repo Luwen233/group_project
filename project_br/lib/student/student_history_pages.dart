@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:project_br/student/booking_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:project_br/student/booking_service.dart';
 
 class StudentHistoryPages extends StatefulWidget {
   const StudentHistoryPages({super.key});
@@ -11,14 +11,71 @@ class StudentHistoryPages extends StatefulWidget {
 
 class _StudentHistoryPagesState extends State<StudentHistoryPages> {
   int? savedUserID;
+  String? _token;
+  List<Map<String, dynamic>> _allBookings = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistoryData();
+  }
+
+  Future<void> _loadHistoryData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      savedUserID = prefs.getInt('user_id');
+      _token = prefs.getString('token');
+
+      if (savedUserID != null && _token != null) {
+        // เรียก API เพื่อดึง history
+        final bookings = await BookingService.fetchHistoryBookings(
+          savedUserID!,
+          _token!,
+        );
+
+        // 🔍 Debug: แสดงข้อมูลที่ได้จาก API
+        debugPrint('📋 Total history bookings: ${bookings.length}');
+        for (var b in bookings) {
+          debugPrint(
+            '  - ID: ${b['id']}, Status: ${b['status']}, Room: ${b['roomName']}',
+          );
+        }
+
+        if (mounted) {
+          setState(() {
+            _allBookings = bookings;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading history: $e');
+      if (mounted) {
+        setState(() {
+          _allBookings = [];
+        });
+      }
+    }
+  }
+
   //filter list status
   List<Map<String, dynamic>> _getFilteredBookings(String status) {
     if (status == 'All') {
-      return BookingService.bookings
-          .where((b) => b['status'] != 'Pending')
+      final filtered = _allBookings
+          .where((b) => b['status']?.toString().toLowerCase() != 'pending')
           .toList();
+      debugPrint('🔍 Filter "$status": ${filtered.length} items');
+      return filtered;
     }
-    return BookingService.bookings.where((b) => b['status'] == status).toList();
+
+    // เปรียบเทียบแบบไม่สนใจตัวพิมพ์เล็ก-ใหญ่
+    final filtered = _allBookings.where((b) {
+      final bookingStatus = b['status']?.toString().toLowerCase() ?? '';
+      final targetStatus = status.toLowerCase();
+      return bookingStatus == targetStatus;
+    }).toList();
+
+    debugPrint('🔍 Filter "$status": ${filtered.length} items');
+    return filtered;
   }
 
   // Function to show the btm sheet
@@ -26,17 +83,17 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
     BuildContext context,
     Map<String, dynamic> booking,
   ) {
-    final String status = booking['status'] ?? 'Cancelled';
+    final String status = booking['status'] ?? 'cancelled';
     String statusActionText;
 
-    switch (status) {
-      case 'Approved':
+    switch (status.toLowerCase()) {
+      case 'approved':
         statusActionText = 'Approved On';
         break;
-      case 'Rejected':
+      case 'rejected':
         statusActionText = 'Rejected On';
         break;
-      case 'Cancelled':
+      case 'cancelled':
       default:
         statusActionText = 'Cancelled On';
     }
@@ -130,7 +187,7 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
               const SizedBox(height: 20),
 
               // Don't show notes if Cancelled
-              if (status != 'Cancelled')
+              if (status.toLowerCase() != 'cancelled')
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -147,7 +204,7 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
                     const SizedBox(height: 16),
 
                     //lecuterer note only reject
-                    if (status == 'Rejected')
+                    if (status.toLowerCase() == 'rejected')
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -197,40 +254,6 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
         );
       },
     );
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _init(); // เรียกตัวกลางแทน
-  }
-
-  Future<void> _init() async {
-    await _loadUserData(); // รอให้ได้ savedUserID ก่อน
-    await _loadLogs(); // แล้วค่อยโหลด logs ของ user
-  }
-
-  Future<void> _loadUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    setState(() {
-      savedUserID = prefs.getInt('user_id'); // อาจเป็น null ได้ ถ้าไม่เคยเซฟ
-    });
-  }
-
-  Future<void> _loadLogs() async {
-    try {
-      if (savedUserID == null) {
-        // ป้องกัน null: จะเลือกโหลด all logs หรือ return เลยก็ได้
-        // await BookingService.fetchAllLogs();
-        return;
-      }
-      // ใช้ user id จริง แทน '1' ที่ฮาร์ดโค้ด
-      await BookingService.fetchLogsByUser(savedUserID!.toString());
-      setState(() {});
-    } catch (e) {
-      debugPrint('Load logs error: $e');
-    }
   }
 
   Widget build(BuildContext context) {
@@ -322,23 +345,27 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
   }
 
   Widget _buildHistoryCard(Map<String, dynamic> booking) {
-    final String status = booking['status'] ?? 'Cancelled';
+    final String status = booking['status'] ?? 'cancelled';
     Color statusColor;
     String statusActionText;
+    String displayStatus;
 
-    switch (status) {
-      case 'Approved':
-        statusColor = Color(0xff3BCB53);
+    switch (status.toLowerCase()) {
+      case 'approved':
+        statusColor = Colors.green;
         statusActionText = 'Approved On';
+        displayStatus = 'Approved';
         break;
-      case 'Rejected':
-        statusColor = Color(0xffDB5151);
+      case 'rejected':
+        statusColor = Colors.red;
         statusActionText = 'Rejected On';
+        displayStatus = 'Rejected';
         break;
-      case 'Cancelled':
+      case 'cancelled':
       default:
-        statusColor = Color(0xff4E534E);
+        statusColor = Colors.grey;
         statusActionText = 'Cancelled On';
+        displayStatus = 'Cancelled';
     }
 
     return Card(
@@ -369,33 +396,38 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildDetailItem(
-                      'Booked By',
-                      booking['name'] ?? 'Mr. John',
-                    ),
-                    SizedBox(height: 12),
-                    _buildDetailItem(
-                      'Requested On',
-                      booking['date'] ?? 'Sep 22, 2025',
-                    ),
-                  ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildDetailItem(
+                        'Booked By',
+                        booking['name'] ?? 'Mr. John',
+                      ),
+                      SizedBox(height: 12),
+                      _buildDetailItem(
+                        'Requested On',
+                        booking['date'] ?? 'Sep 22, 2025',
+                      ),
+                    ],
+                  ),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildDetailItem(
-                      'Approved By',
-                      booking['approver'] ?? 'Mr. John',
-                    ),
-                    SizedBox(height: 12),
-                    _buildDetailItem(
-                      statusActionText,
-                      booking['actionDate'] ?? 'Sep 22, 2025',
-                    ),
-                  ],
+                SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildDetailItem(
+                        'Approved By',
+                        booking['approver'] ?? 'Mr. John',
+                      ),
+                      SizedBox(height: 12),
+                      _buildDetailItem(
+                        statusActionText,
+                        booking['actionDate'] ?? 'Sep 22, 2025',
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -413,7 +445,7 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
                     ),
                     child: Center(
                       child: Text(
-                        status,
+                        displayStatus,
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -460,6 +492,8 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
         SizedBox(height: 4),
         Text(
           value,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: Colors.black,
             fontSize: 14,

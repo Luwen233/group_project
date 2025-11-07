@@ -5,7 +5,6 @@ import 'package:project_br/student/student_history_pages.dart';
 import 'package:project_br/student/student_home_pages.dart';
 import 'package:project_br/student/student_navbar_widget.dart';
 
-
 class WidgetTree extends StatelessWidget {
   const WidgetTree({super.key});
 

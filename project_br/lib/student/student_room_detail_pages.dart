@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:project_br/student/booking_service.dart';
 
 // Timeslot
 class TimeSlot {
@@ -33,6 +34,7 @@ class RoomDetailPage extends StatefulWidget {
 
 class _RoomDetailPageState extends State<RoomDetailPage> {
   TimeSlot? _selectedSlot;
+  // Student จองได้เฉพาะวันนี้เท่านั้น (ตาม requirement)
   final _reasonController = TextEditingController();
   bool _submitting = false;
 
@@ -69,6 +71,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     super.initState();
     _bookedSlotIds = List<int>.from(widget.bookedSlotIds);
     _loadUserData(); // Load user ID & token
+
+    // Debug: ดูข้อมูลที่ได้มา
+    debugPrint('=== Room Detail Debug ===');
+    debugPrint('Room: ${widget.rooms}');
+    debugPrint('Booked Slots: $_bookedSlotIds');
   }
 
   Future<void> _loadUserData() async {
@@ -105,40 +112,75 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       return;
     }
 
+    // ⭐️ เช็คว่าจองวันนี้แล้วหรือยัง (1 ID จองได้วันละครั้ง)
+    setState(() => _submitting = true);
+    try {
+      final hasTodayBooking = await BookingService.hasTodayBooking(
+        _userId,
+        _token,
+      );
+
+      if (hasTodayBooking) {
+        if (!mounted) return;
+        setState(() => _submitting = false);
+        _snack(
+          'You have already booked a room today. Only 1 booking per day is allowed.',
+        );
+        return;
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      _snack('Error checking booking status: $e');
+      return;
+    }
+
     final int roomId = (widget.rooms['id'] ?? widget.rooms['room_id']) as int;
     final int slotId = _selectedSlot!.id;
-    final String bookingDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final String bookingDate = DateFormat(
+      'yyyy-MM-dd',
+    ).format(DateTime.now()); // จองได้เฉพาะวันนี้
     final String reason = _reasonController.text.trim();
 
-    setState(() => _submitting = true);
+    debugPrint('=== Booking Request ===');
+    debugPrint('Room ID: $roomId, Slot ID: $slotId');
+    debugPrint('User ID: $_userId, Date: $bookingDate');
+    debugPrint('Reason: $reason');
 
     try {
-      final url = Uri.http(
-        '127.0.0.1:3000',
-        '/bookings',
-      ); // CHANGE if not emulator
-      final res = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_token',
-        },
-        body: jsonEncode({
-          'room_id': roomId,
-          'user_id': _userId,
-          'slot_id': slotId,
-          'booking_date': bookingDate,
-          'booking_reason': reason,
-        }),
-      );
+      final url = Uri.parse('${BookingService.BASE_URL}/bookings');
+      debugPrint('POST URL: $url');
+
+      final res = await http
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $_token',
+            },
+            body: jsonEncode({
+              'room_id': roomId,
+              'slot_id': slotId,
+              'booking_date': bookingDate,
+              // Backend ใช้ user_id จาก JWT token แทน
+              // 'booking_reason': reason, // Backend ยังไม่รองรับ field นี้
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      debugPrint('Response Status: ${res.statusCode}');
+      debugPrint('Response Body: ${res.body}');
 
       if (!mounted) return;
 
       final Map<String, dynamic> data = jsonDecode(res.body);
 
-      if (res.statusCode == 200) {
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        // ⭐️ แสดง dialog แล้วเด้งไปหน้า Request (My Bookings)
+        if (!mounted) return;
         showDialog(
           context: context,
+          barrierDismissible: false,
           builder: (_) => AlertDialog(
             icon: const Icon(
               Icons.check_circle_outline_rounded,
@@ -147,13 +189,18 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             ),
             title: const Text('Booking Request Sent!'),
             content: Text(
-              'Booking ID: ${data['booking_id']}\nCheck it in My Bookings.',
+              'Booking ID: ${data['booking_id']}\nYour request is pending approval.',
             ),
             actions: [
               TextButton(
                 onPressed: () {
-                  Navigator.pop(context); // close dialog
-                  Navigator.pop(context, true); // changed = true back to home
+                  // ปิด dialog และกลับไปหน้า home พร้อม flag
+                  Navigator.of(context).pop(); // close dialog first
+                  if (mounted) {
+                    Navigator.of(
+                      context,
+                    ).pop('booking_success'); // then pop to home with flag
+                  }
                 },
                 child: const Text('OK'),
               ),
@@ -161,10 +208,19 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           ),
         );
       } else {
-        _snack('Error: ${data['error'] ?? res.body}');
+        // Backend อาจส่ง 'message' หรือ 'error' field
+        final errorMsg =
+            data['message'] ??
+            data['error'] ??
+            'Server returned ${res.statusCode}';
+        debugPrint('Booking failed: $errorMsg');
+        _snack('Booking failed: $errorMsg');
       }
     } catch (e) {
-      _snack('Network error: $e');
+      debugPrint('Booking error: $e');
+      _snack(
+        'Network error: $e. Make sure backend is running at ${BookingService.BASE_URL}',
+      );
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -186,9 +242,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
     final String img = (widget.rooms['image'] ?? '').toString().trim();
     final bool isNetwork = img.startsWith('http');
+
+    // ถ้า img มี "assets/images/" อยู่แล้ว ไม่ต้องเติม
     final String assetPath = img.isEmpty
         ? 'assets/images/placeholder.png'
-        : 'assets/images/$img';
+        : (img.startsWith('assets/images/') ? img : 'assets/images/$img');
 
     final headerImage = isNetwork
         ? Image.network(
@@ -221,6 +279,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     const primaryBlue = Color(0xFF3C9CBF);
     const lightGrey = Color.fromARGB(115, 236, 236, 236);
     final nowDouble = _t2d(TimeOfDay.now());
+
+    debugPrint('=== Time Check ===');
+    debugPrint('Current time: ${TimeOfDay.now()} = $nowDouble');
+    debugPrint('Room status: $status, isFree: $isFree');
+    debugPrint('Booked slots: $_bookedSlotIds');
 
     return Scaffold(
       backgroundColor: const Color(0xffffffff),
@@ -272,7 +335,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                   backgroundColor: Colors.black26,
                   child: IconButton(
                     icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () => Navigator.pop(context, false),
+                    onPressed: () =>
+                        Navigator.pop(context), // ไม่ส่งค่ากลับ เพราะไม่ได้จอง
                   ),
                 ),
               ),
@@ -383,8 +447,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                             runSpacing: 12,
                             alignment: WrapAlignment.center,
                             children: _timeSlots.map((slot) {
+                              // ตาม requirement: จองได้เฉพาะวันนี้ + เวลาต้องยังไม่ผ่าน
                               final bool isFuture =
                                   nowDouble < _t2d(slot.endTime);
+
                               final bool isAlreadyBooked = _bookedSlotIds
                                   .contains(slot.id);
                               final bool enabled =

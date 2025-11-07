@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:project_br/student/booking_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class StudentBookingPages extends StatefulWidget {
   const StudentBookingPages({super.key});
@@ -10,38 +11,80 @@ class StudentBookingPages extends StatefulWidget {
 
 class _StudentBookingPagesState extends State<StudentBookingPages> {
   List<Map<String, dynamic>> _pendingBookings = [];
+  bool _isLoading = true;
+  String? _error;
+  int _userId = 0;
+  String _token = '';
 
   @override
   void initState() {
     super.initState();
-    _filterPendingBookings();
+    _loadUserDataAndFetchBookings();
   }
 
-  void _filterPendingBookings() {
-    setState(() {
-      _pendingBookings = BookingService.bookings
-          .where((booking) => booking['status'] == 'Pending')
-          .toList();
-    });
-  }
+  // ⭐️ ดึงข้อมูลจาก database
+  Future<void> _loadUserDataAndFetchBookings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _userId = prefs.getInt('user_id') ?? 0;
+      _token = prefs.getString('token') ?? '';
 
-  // --- UPDATED LOGIC ---
-  // This function now just updates the status and shows the snackbar
-  void _cancelBooking(Map<String, dynamic> bookingToCancel) {
-    setState(() {
-      final originalBooking = BookingService.bookings.firstWhere(
-        (b) => b['id'] == bookingToCancel['id'],
+      if (_userId == 0 || _token.isEmpty) {
+        setState(() {
+          _error = 'User session expired. Please login again.';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final bookings = await BookingService.fetchPendingBookings(
+        _userId,
+        _token,
       );
-      originalBooking['status'] = 'Cancelled';
-      _filterPendingBookings();
-    });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Your Booking request has been cancelled.'),
-        backgroundColor: Colors.grey,
-      ),
-    );
+      if (mounted) {
+        setState(() {
+          _pendingBookings = bookings;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Failed to load bookings: $e';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  // ยกเลิก booking
+  Future<void> _cancelBooking(Map<String, dynamic> bookingToCancel) async {
+    try {
+      // เรียก API เพื่อยกเลิก booking
+      await BookingService.cancelBooking(bookingToCancel['id'], _token);
+
+      // รีโหลดข้อมูลใหม่
+      await _loadUserDataAndFetchBookings();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Your booking request has been cancelled.'),
+            backgroundColor: Colors.grey,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to cancel booking: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _showCancelConfirmationDialog(
@@ -86,9 +129,16 @@ class _StudentBookingPagesState extends State<StudentBookingPages> {
         elevation: 3,
         shadowColor: Colors.black54,
         title: Text(
-          'My Books',
+          'My Bookings',
           style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
+        actions: [
+          // ⭐️ ปุ่ม Refresh
+          IconButton(
+            icon: Icon(Icons.refresh),
+            onPressed: _isLoading ? null : _loadUserDataAndFetchBookings,
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: Size.fromHeight(67),
           child: Column(
@@ -98,7 +148,7 @@ class _StudentBookingPagesState extends State<StudentBookingPages> {
               Padding(
                 padding: EdgeInsets.all(16),
                 child: Text(
-                  'Upcoming',
+                  'Pending Requests',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -110,12 +160,34 @@ class _StudentBookingPagesState extends State<StudentBookingPages> {
           ),
         ),
       ),
-      body: Padding(
-        padding: EdgeInsets.all(20),
-        child: _pendingBookings.isEmpty
-            ? _buildEmptyState()
-            : _buildBookingList(),
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  SizedBox(height: 16),
+                  Text(
+                    _error!,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.red),
+                  ),
+                  SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _loadUserDataAndFetchBookings,
+                    child: Text('Retry'),
+                  ),
+                ],
+              ),
+            )
+          : Padding(
+              padding: EdgeInsets.all(20),
+              child: _pendingBookings.isEmpty
+                  ? _buildEmptyState()
+                  : _buildBookingList(),
+            ),
     );
   }
 

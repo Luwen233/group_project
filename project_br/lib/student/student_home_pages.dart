@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:project_br/login/login_page.dart';
 import 'package:project_br/student/student_room_detail_pages.dart';
+import 'package:project_br/student/notifiers.dart';
+import 'package:project_br/config/api_config.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -60,11 +62,8 @@ class _StudentHomePagesState extends State<StudentHomePages> {
 
   Future<void> _checkMyBookingStatus() async {
     try {
-      final uri = Uri.http(
-        '192.168.1.118:3000',
-        '/my-bookings-today/$_userId',
-      ); //CHANGE IPs
-      final res = await http.get(uri).timeout(const Duration(seconds: 5));
+      final uri = Uri.parse('${ApiConfig.baseUrl}/my-bookings-today/$_userId');
+      final res = await http.get(uri).timeout(const Duration(seconds: 3));
 
       if (res.statusCode == 200) {
         final List data = jsonDecode(res.body);
@@ -75,18 +74,16 @@ class _StudentHomePagesState extends State<StudentHomePages> {
         }
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error: $e")));
-    } finally {
-      setState(() => _isWaiting = false);
+      // ไม่แสดง error เพราะอาจเป็นแค่ backend ยังไม่เปิด
+      // ปล่อยให้ _hasActiveBooking = false (default)
+      debugPrint('Check booking error: $e');
     }
   }
 
   Future<void> _fetchRooms() async {
     try {
-      final uri = Uri.http('127.0.0.1:3000', '/rooms'); //CHANGE IPs
-      final res = await http.get(uri).timeout(const Duration(seconds: 10));
+      final uri = Uri.parse(ApiConfig.rooms);
+      final res = await http.get(uri).timeout(const Duration(seconds: 5));
 
       if (res.statusCode == 200) {
         final List data = jsonDecode(res.body);
@@ -280,7 +277,9 @@ class _StudentHomePagesState extends State<StudentHomePages> {
                           crossAxisCount: 2,
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 16,
-                          childAspectRatio: 3 / 3.7,
+                          childAspectRatio:
+                              3 /
+                              3.8, // เพิ่มความสูงเล็กน้อยเพื่อป้องกัน overflow
                         ),
                     itemBuilder: (context, index) {
                       final room = _filteredRooms()[index];
@@ -295,27 +294,35 @@ class _StudentHomePagesState extends State<StudentHomePages> {
                       if (isNetworkImage) {
                         roomImage = Image.network(
                           imageValue,
-                          height: 165,
+                          height: 145,
                           width: double.infinity,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) =>
                               const SizedBox(
-                                height: 165,
+                                height: 145,
                                 child: Center(child: Icon(Icons.broken_image)),
                               ),
                         );
                       } else {
-                        final localAsset = imageValue.isNotEmpty
-                            ? 'assets/images/$imageValue'
-                            : 'assets/images/placeholder.png';
+                        // ถ้า imageValue มี "assets/images/" อยู่แล้ว ไม่ต้องเติม
+                        String localAsset;
+                        if (imageValue.isEmpty) {
+                          localAsset = 'assets/images/placeholder.png';
+                        } else if (imageValue.startsWith('assets/images/')) {
+                          localAsset =
+                              imageValue; // ใช้ path เดิมที่มีจาก backend
+                        } else {
+                          localAsset = 'assets/images/$imageValue';
+                        }
+
                         roomImage = Image.asset(
                           localAsset,
-                          height: 165,
+                          height: 145,
                           width: double.infinity,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) =>
                               const SizedBox(
-                                height: 165,
+                                height: 145,
                                 child: Center(child: Icon(Icons.broken_image)),
                               ),
                         );
@@ -324,7 +331,7 @@ class _StudentHomePagesState extends State<StudentHomePages> {
                       return GestureDetector(
                         onTap: canTap
                             ? () async {
-                                final changed = await Navigator.push<bool>(
+                                final result = await Navigator.push<String>(
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) => RoomDetailPage(
@@ -336,12 +343,14 @@ class _StudentHomePagesState extends State<StudentHomePages> {
 
                                 if (!mounted) return;
 
-                                // Refresh ONLY if detail page returned true (i.e., after booking)
-                                if (changed == true) {
-                                  // refresh quietly—no spinner/flicker
-                                  await _fetchRooms();
-                                  await _checkMyBookingStatus();
-                                  if (mounted) setState(() {});
+                                // ⭐️ ถ้าจองสำเร็จ เด้งไปหน้า Request (My Bookings)
+                                if (result == 'booking_success') {
+                                  // เด้งไปหน้า Request ทันที ไม่ต้องรอ refresh
+                                  selectedPageNotifer.value = 1;
+
+                                  // refresh data ใน background (ไม่บล็อก UI)
+                                  _fetchRooms();
+                                  _checkMyBookingStatus();
                                 }
                               }
                             : null,
@@ -369,7 +378,7 @@ class _StudentHomePagesState extends State<StudentHomePages> {
                               Padding(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 12,
-                                  vertical: 6,
+                                  vertical: 4,
                                 ),
                                 child: Text(
                                   room['name'] as String,
@@ -378,12 +387,13 @@ class _StudentHomePagesState extends State<StudentHomePages> {
                                   ),
                                 ),
                               ),
-                              const Spacer(),
+                              // ใช้ช่องว่างคงที่แทน Spacer เพื่อลดโอกาสเกิด overflow ใน Grid item
+                              const SizedBox(height: 8),
                               Padding(
                                 padding: const EdgeInsets.only(
                                   left: 12,
                                   right: 12,
-                                  bottom: 15,
+                                  bottom: 12,
                                 ),
                                 child: Align(
                                   alignment: Alignment.centerRight,
