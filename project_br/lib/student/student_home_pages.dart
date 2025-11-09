@@ -96,7 +96,7 @@ class _StudentHomePagesState extends State<StudentHomePages> {
 
   Future<void> _fetchRooms() async {
     try {
-      final uri = Uri.http('172.16.10.111:3000', '/rooms'); //CHANGE IPs
+      final uri = Uri.parse('${ApiConfig.baseUrl}/rooms'); //CHANGE IPs
       final res = await http.get(uri).timeout(const Duration(seconds: 10));
 
       if (res.statusCode == 200) {
