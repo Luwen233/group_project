@@ -24,7 +24,7 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
     super.initState();
     fetchRooms();
     fetchPendingRequests();
-    fetchHistoryRequests();
+    // fetchHistoryRequests();
     _loadSummary();
   }
 
