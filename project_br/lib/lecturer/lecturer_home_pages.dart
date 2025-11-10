@@ -4,6 +4,7 @@ import 'package:project_br/login/login_page.dart';
 import 'package:project_br/lecturer/booking_service.dart';
 import 'package:project_br/lecturer/dashboard_summary.dart';
 import 'package:project_br/lecturer/rooms_notifier.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LecturerHomePages extends StatefulWidget {
   const LecturerHomePages({super.key});
@@ -18,14 +19,23 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
   int reservedRooms = 0;
   int pendingRequests = 0;
   int disabledRooms = 0;
+  String? userName;
+  String? userEmail;
 
   @override
   void initState() {
     super.initState();
     fetchRooms();
     fetchPendingRequests();
-    // fetchHistoryRequests();
     _loadSummary();
+    _loadUserInfo();
+  }
+
+  Future<void> _loadUserInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      userName = prefs.getString('username') ?? 'Lecturer';
+    });
   }
 
   Future<void> _loadSummary() async {
@@ -57,15 +67,16 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
     final dateText = DateFormat('MMM d, y').format(DateTime.now());
 
     return Scaffold(
+      resizeToAvoidBottomInset: true, // ✅ ป้องกัน overflow ตอนเปิดคีย์บอร์ด
       endDrawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            const UserAccountsDrawerHeader(
-              decoration: BoxDecoration(color: Color(0xFF3C9CBF)),
-              accountName: Text("Lecturer"),
+            UserAccountsDrawerHeader(
+              decoration: const BoxDecoration(color: Color(0xFF3C9CBF)),
+              accountName: Text(userName ?? "Loading..."),
               accountEmail: null,
-              currentAccountPicture: CircleAvatar(
+              currentAccountPicture: const CircleAvatar(
                 child: Icon(Icons.person, color: Colors.black),
               ),
             ),
@@ -107,44 +118,52 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
                   horizontal: 25,
                   vertical: 12,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      height: 40,
-                      width: 160,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: const Color.fromARGB(80, 33, 33, 40),
-                        borderRadius: BorderRadius.circular(20),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      physics: const ClampingScrollPhysics(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            height: 40,
+                            width: 160,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: const Color.fromARGB(80, 33, 33, 40),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              dateText,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          Container(
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(17),
+                            ),
+                            child: TextField(
+                              controller: _searchBox,
+                              onChanged: (_) => setState(() {}),
+                              decoration: const InputDecoration(
+                                hintText: "Search Room",
+                                border: InputBorder.none,
+                                suffixIcon: Icon(Icons.search),
+                                contentPadding: EdgeInsets.all(14),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      child: Text(
-                        dateText,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    Container(
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(17),
-                      ),
-                      child: TextField(
-                        controller: _searchBox,
-                        onChanged: (_) => setState(() {}),
-                        decoration: const InputDecoration(
-                          hintText: "Search Room",
-                          border: InputBorder.none,
-                          suffixIcon: Icon(Icons.search),
-                          contentPadding: EdgeInsets.all(14),
-                        ),
-                      ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ),
             ),
@@ -162,7 +181,6 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
             ),
           ),
 
-          // ✅ Room Grid
           ValueListenableBuilder(
             valueListenable: roomsNotifier,
             builder: (_, rooms, __) {
@@ -203,7 +221,7 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
                             ),
                             child: Image.asset(
                               room['image'],
-                              height: 150,
+                              height: 120, // ✅ ลดความสูงภาพเพื่อกัน overflow
                               width: double.infinity,
                               fit: BoxFit.cover,
                             ),
@@ -222,10 +240,7 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
                               ),
                             ),
                           ),
-
                           const Spacer(),
-
-                          // ✅ ปุ่มสถานะอยู่ชิดขวา + เว้นที่พอดี
                           Padding(
                             padding: const EdgeInsets.only(
                               right: 12,
