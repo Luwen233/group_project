@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:project_br/lecturer/lecturer_widget_tree.dart';
+import 'package:project_br/lecturer/widget/lecturer_tree_widget.dart';
 import 'package:project_br/login/login_page.dart';
 import 'package:project_br/login/signup_page.dart';
-import 'package:project_br/student/widget_tree.dart';
+import 'package:project_br/student/widget/student_tree_widget.dart';
 
 void main() {
   runApp(const MyApp());
