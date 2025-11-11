@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:project_br/login/login_page.dart';
-import 'package:project_br/staff/pages/widgets/room_card.dart';
+import 'package:project_br/staff/pages/room_card.dart';
 import 'package:project_br/staff/pages/edit_room_page.dart';
 
 class HomePage extends StatefulWidget {
