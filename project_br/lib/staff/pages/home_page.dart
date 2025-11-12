@@ -24,6 +24,7 @@ class _HomePageState extends State<HomePage> {
   String? _error;
   String? _username;
 
+  int totalSlots = 0;
   int freeRooms = 0;
   int reservedRooms = 0;
   int pendingRequests = 0;
@@ -75,15 +76,25 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadSummary() async {
     final url = Uri.parse('${ApiConfig.baseUrl}/dashboard/summary');
+
     try {
       final res = await http.get(url);
       final data = jsonDecode(res.body);
+
       if (!mounted) return;
+
+      int f = data['freeRooms'] ?? 0;
+      int r = data['reservedBookings'] ?? 0;
+      int p = data['pendingBookings'] ?? 0;
+      int d = data['disabledRooms'] ?? 0;
+
+      int total = f + r + p + d;
       setState(() {
-        freeRooms = data['freeRooms'] ?? 0;
-        reservedRooms = data['reservedBookings'] ?? 0;
-        pendingRequests = data['pendingBookings'] ?? 0;
-        disabledRooms = data['disabledRooms'] ?? 0;
+        totalSlots = total;
+        freeRooms = f;
+        reservedRooms = r;
+        pendingRequests = p;
+        disabledRooms = d;
       });
     } catch (e) {
       throw Exception('Failed to load summary');
@@ -305,6 +316,7 @@ class _HomePageState extends State<HomePage> {
                       vertical: 14,
                     ),
                     child: DashboardSummary(
+                      totalSlots: totalSlots,
                       freeSlots: freeRooms,
                       reservedSlots: reservedRooms,
                       pendingSlots: pendingRequests,

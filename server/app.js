@@ -458,6 +458,7 @@ app.patch('/bookings/:id/reject', verifyUser, (req, res) => {
 app.get('/dashboard/summary', (req, res) => {
   con.query(
     `SELECT
+        (SELECT COUNT(*) FROM rooms) * (SELECT COUNT(*) FROM time_slots) AS totalSlots,
         (SELECT COUNT(*) FROM rooms WHERE room_status = 'free') AS freeRooms,
         (SELECT COUNT(*) FROM rooms WHERE room_status = 'disabled') AS disabledRooms,
         (SELECT COUNT(*) FROM bookings WHERE LOWER(booking_status) = 'pending') AS pendingBookings,
