@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:project_br/api_config.dart';
 import 'package:http/http.dart' as http;
@@ -69,6 +70,7 @@ class _LecturerHistoryPagesState extends State<LecturerHistoryPages>
               'approver': b['approver_name'] ?? '-',
               'lecturerNote': b['reject_reason'] ?? '',
               'actionDate': b['action_date'] ?? '',
+              'actionTime': _formatIsoTo12HourTime(b['action_date']),
               'image': b['image'],
               'name': b['booked_by_name'] ?? 'Unknown',
             };
@@ -96,6 +98,22 @@ class _LecturerHistoryPagesState extends State<LecturerHistoryPages>
         return '03.00 - 05.00 PM';
       default:
         return 'Unknown Time';
+    }
+  }
+
+  String _formatIsoTo12HourTime(dynamic rawDate) {
+    if (rawDate == null || rawDate.toString().isEmpty) {
+      return '-';
+    }
+
+    try {
+      final DateTime parsedDate = DateTime.parse(rawDate.toString());
+      
+      return DateFormat('hh:mm a').format(parsedDate);
+
+    } catch (e) {
+      print('Error parsing date: $e');
+      return '-';
     }
   }
 
@@ -293,7 +311,7 @@ class _LecturerHistoryPagesState extends State<LecturerHistoryPages>
                 const SizedBox(height: 20),
                 _buildDetailItem('Booked By', booking['name']),
                 _buildDetailItem('Approved By', booking['approver']),
-                _buildDetailItem(statusActionText, booking['actionDate']),
+                _buildDetailItem(statusActionText, booking['actionTime']),
                 const SizedBox(height: 15),
                 if (booking['reason'] != '') _buildDetailItem('Reason', booking['reason']),
                 if (status == 'Rejected' && booking['lecturerNote'] != '')
