@@ -63,14 +63,18 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
 
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getInt('user_id');
+      final token = prefs.getString('token');
 
-      if (userId == null) {
-        throw Exception("User ID not found. Please log in again.");
+      if (userId == null || token == null) { 
+     throw Exception("User ID or Token not found. Please log in again.");
       }
+      final uri = Uri.parse('${ApiConfig.baseUrl}/bookings/user');
 
-      final uri = Uri.parse('${ApiConfig.baseUrl}/bookings/user/$userId');
-      final res = await http.get(uri).timeout(const Duration(seconds: 10));
+      final headers = {
+        'Authorization': 'Bearer $token',
+      };
 
+      final res = await http.get(uri,headers: headers).timeout(const Duration(seconds: 10));
       if (res.statusCode == 200) {
         final List data = jsonDecode(res.body);
         setState(() {
