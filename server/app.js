@@ -30,7 +30,7 @@ function verifyUser(req, res, next) {
   }
   jwt.verify(token, JWT_KEY, (err, decoded) => {
     if (err) {
-      res.status(401).send('Incorrect token');
+      return res.status(401).send('Incorrect token');
     }
 
     else {
@@ -224,50 +224,50 @@ app.get('/rooms/:id', (req, res) => {
   });
 });
 
-app.get('/bookings/user/:userId', verifyUser, (req, res) => {
-  const userId = req.params.userId;
+app.get('/bookings/user', verifyUser, (req, res) => {
+  const decoded = req.decoded;
   let sql = '';
 
-  if (req.decoded.role !== 'Lecturer' && req.decoded.role !== 'Staff')
+  if (decoded.role == 'Student')
     sql = `
-  SELECT 
-    b.booking_id AS id,
-    r.room_name,
-    r.image,
-    DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date,
-    b.slot_id, 
-    b.booking_status AS status,
-    b.booking_reason AS reason,
-    b.reject_reason AS lecturer_note,
-    u_booked.username AS booked_by_name,
-    u_approver.username AS approver_name,
-    COALESCE(b.approved_on, b.rejected_on) AS action_date
+      SELECT 
+        b.booking_id AS id,
+        r.room_name,
+        r.image,
+        DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date,
+        b.slot_id, 
+        b.booking_status AS status,
+        b.booking_reason AS reason,
+        b.reject_reason AS lecturer_note,
+        u_booked.username AS booked_by_name,
+        u_approver.username AS approver_name,
+        COALESCE(b.approved_on, b.rejected_on) AS action_date
 
-  FROM bookings b
-  JOIN rooms r ON b.room_id = r.room_id
-  JOIN users u_booked ON b.user_id = u_booked.user_id
-  LEFT JOIN users u_approver ON b.approved_by = u_approver.user_id
-  WHERE b.user_id = ?   
-  ORDER BY b.booking_date DESC, b.slot_id ASC
-`;
-
+      FROM bookings b
+      JOIN rooms r ON b.room_id = r.room_id
+      JOIN users u_booked ON b.user_id = u_booked.user_id
+      LEFT JOIN users u_approver ON b.approved_by = u_approver.user_id
+      WHERE b.user_id = ?  
+      ORDER BY b.booking_date DESC, b.slot_id ASC
+    `;
   else
     sql = `
-  SELECT 
-    b.booking_id AS id,
-    r.room_name, r.image, DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date, b.slot_id, 
-    b.booking_status AS status, b.booking_reason AS reason, b.reject_reason AS lecturer_note, 
-    u_booked.username AS booked_by_name, u_approver.username AS approver_name, 
-    COALESCE(b.approved_on, b.rejected_on) AS action_date
+      SELECT 
+        b.booking_id AS id,
+        r.room_name, r.image, DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date, b.slot_id, 
+        b.booking_status AS status, b.booking_reason AS reason, b.reject_reason AS lecturer_note, 
+        u_booked.username AS booked_by_name, u_approver.username AS approver_name, 
+        COALESCE(b.approved_on, b.rejected_on) AS action_date
 
-  FROM bookings b
-  JOIN rooms r ON b.room_id = r.room_id
-  JOIN users u_booked ON b.user_id = u_booked.user_id
-  LEFT JOIN users u_approver ON b.approved_by = u_approver.user_id
-  WHERE b.approved_by = ? 
-  ORDER BY b.booking_date DESC, b.slot_id ASC
-`;
-  con.query(sql, [userId], (err, result) => {
+      FROM bookings b
+      JOIN rooms r ON b.room_id = r.room_id
+      JOIN users u_booked ON b.user_id = u_booked.user_id
+      LEFT JOIN users u_approver ON b.approved_by = u_approver.user_id
+      WHERE b.approved_by = ? 
+      ORDER BY b.booking_date DESC, b.slot_id ASC
+    `;
+
+  con.query(sql, [decoded.id], (err, result) => {
     if (err) {
       console.error("DB error:", err);
       return res.status(500).json({ error: "Database query failed", details: err.message });
@@ -358,19 +358,6 @@ app.post('/bookings', verifyUser, (req, res) => {
   });
 });
 
-// app.patch('/bookings/:id/cancel', (req, res) => {
-//     const bookingId = req.params.id;
-//     const sql = "UPDATE bookings SET booking_status = 'Cancelled' WHERE booking_id = ?";
-
-//     con.query(sql, [bookingId], (err, result) => {
-//         if (err) return res.status(500).json({ error: err });
-//         if (result.affectedRows === 0) {
-//             return res.status(404).json({ error: 'Booking not found' });
-//         }
-//         res.json({ message: 'Booking cancelled' });
-//     });
-// });
-
 // Lecturer: pending requests list
 app.get('/bookings/requests', (req, res) => {
   con.query(
@@ -394,7 +381,7 @@ app.get('/bookings/requests', (req, res) => {
 
 // Lecturer: approve
 app.patch('/bookings/:id/approve', verifyUser, (req, res) => {
-  if (req.decoded.role !== 'Lecturer' && req.decoded.role !== 'Staff') //ติดปัญหาส่วนนี้
+  if (req.decoded.role !== 'Lecturer' && req.decoded.role !== 'Staff') 
     return res.status(403).json({ message: 'Forbidden' });
 
   con.query(
