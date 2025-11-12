@@ -165,10 +165,13 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
           children: [
             UserAccountsDrawerHeader(
               decoration: const BoxDecoration(color: Color(0xFF3C9CBF)),
-              accountName: Text(userName ?? "Loading..."),
+              accountName: Text(
+                userName ?? 'Lecturer',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
               accountEmail: null,
               currentAccountPicture: const CircleAvatar(
-                child: Icon(Icons.person, color: Colors.black),
+                child: Icon(Icons.person, color: Colors.black, size: 40),
               ),
             ),
             ListTile(
