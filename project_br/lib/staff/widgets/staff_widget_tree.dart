@@ -3,6 +3,16 @@ import 'package:project_br/staff/pages/add_room_page.dart';
 import 'package:project_br/staff/pages/history_page.dart';
 import 'package:project_br/staff/pages/home_page.dart';
 
+// Wrapper for login navigation
+class StaffWidgetTree extends StatelessWidget {
+  const StaffWidgetTree({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MainNavigation();
+  }
+}
+
 void main() {
   runApp(const RoomApp());
 }
@@ -39,9 +49,8 @@ class _MainNavigationState extends State<MainNavigation> {
     HomePage(refreshNotifier: _refreshNotifier),
     AddRoomPage(
       onRoomAdded: () {
-        // เมื่อเพิ่มห้องสำเร็จ กลับไป Home tab
         setState(() => _selectedIndex = 0);
-        _refreshNotifier.value = !_refreshNotifier.value; // Trigger refresh
+        _refreshNotifier.value = !_refreshNotifier.value;
       },
     ),
     const StaffHistoryPage(),

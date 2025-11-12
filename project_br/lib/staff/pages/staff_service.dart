@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:project_br/config/api_config.dart';
+import 'package:project_br/api_config.dart';
 
 String get _baseUrl => ApiConfig.baseUrl;
 
@@ -163,5 +163,29 @@ Future<Map<String, dynamic>?> createRoom(Map<String, dynamic> payload) async {
   } catch (e) {
     print('🔥 createRoom() error: $e');
     return {'error': 'Network error: $e'};
+  }
+}
+// (วางต่อจากโค้ด createRoom() ใน staff_service.dart)
+
+/// Fetch global booking history (approved, rejected, cancelled)
+Future<List<Map<String, dynamic>>> fetchGlobalHistory() async {
+  // ⭐️ นี่คือ Endpoint สำหรับดึงประวัติทั้งหมดสำหรับ Staff
+  final url = Uri.parse('$_baseUrl/bookings/history');
+  print("📡 FETCH GLOBAL HISTORY → $url");
+
+  try {
+    // Endpoint นี้ไม่จำเป็นต้องใช้ Token (ตาม server.js)
+    final res = await http.get(url);
+
+    if (res.statusCode == 200) {
+      final List data = jsonDecode(res.body);
+      return data.map((item) => item as Map<String, dynamic>).toList();
+    } else {
+      print('❌ fetchGlobalHistory() HTTP ${res.statusCode}');
+      return [];
+    }
+  } catch (e) {
+    print('🔥 fetchGlobalHistory() error: $e');
+    return [];
   }
 }

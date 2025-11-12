@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-
 import 'package:intl/intl.dart';
-import 'package:project_br/lecturer/pages/booking_model.dart';
-import 'package:project_br/lecturer/booking_notifiers.dart';
-import 'package:project_br/lecturer/booking_service.dart';
+// ⭐️ 1. แก้ไข Import ให้เรียก staff_service.dart
+import 'package:project_br/staff/pages/staff_service.dart';
 
 class StaffHistoryPage extends StatefulWidget {
   const StaffHistoryPage({super.key});
@@ -16,11 +14,16 @@ class _StaffHistoryPageState extends State<StaffHistoryPage>
     with TickerProviderStateMixin {
   late TabController _tabController;
 
+  // ⭐️ 2. เพิ่ม State จัดการข้อมูล (เหมือน home_page.dart)
+  List<Map<String, dynamic>> _allHistory = [];
+  bool _isLoading = true;
+  String? _error;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    fetchHistoryRequests();
+    _loadHistory(); // ⭐️ 3. เรียกฟังก์ชันโหลดข้อมูล
   }
 
   @override
@@ -29,30 +32,81 @@ class _StaffHistoryPageState extends State<StaffHistoryPage>
     super.dispose();
   }
 
-  List<BookingRequest> _getFilteredBookings(
-    List<BookingRequest> allBookings,
+  // ⭐️ 4. ฟังก์ชันดึงข้อมูลจาก staff_service
+  Future<void> _loadHistory() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final history = await fetchGlobalHistory(); // ⭐️ 5. เรียกใช้ฟังก์ชันใหม่
+      if (mounted) {
+        setState(() {
+          _allHistory = history;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  // ⭐️ 6. แก้ไขฟังก์ชันกรองข้อมูล (เดี๋ยวนี้ใช้ Map)
+  List<Map<String, dynamic>> _getFilteredBookings(
+    List<Map<String, dynamic>> allBookings,
     String status,
   ) {
+    // ฟังก์ชันกรองเดิมถูกต้องแล้ว (กรองเฉพาะ approved/rejected)
     final processedBookings = allBookings
         .where(
           (b) =>
-              b.status.toLowerCase() == 'approved' ||
-              b.status.toLowerCase() == 'rejected',
+              (b['action']?.toString().toLowerCase() == 'approved' ||
+              b['action']?.toString().toLowerCase() == 'rejected'),
         )
         .toList();
     if (status == 'All') return processedBookings;
     return processedBookings
-        .where((b) => b.status.toLowerCase() == status.toLowerCase())
+        .where(
+          (b) => b['action']?.toString().toLowerCase() == status.toLowerCase(),
+        )
         .toList();
   }
 
-  void _showMoreDetailsSheet(BuildContext context, BookingRequest booking) {
-    final String status = booking.status.toLowerCase();
+  // ⭐️ 7. แก้ไขฟังก์ชัน ShowMoreDetails (เดี๋ยวนี้ใช้ Map)
+  void _showMoreDetailsSheet(
+    BuildContext context,
+    Map<String, dynamic> booking,
+  ) {
+    final String status = (booking['action'] ?? '').toString().toLowerCase();
     String statusActionText;
     String actionDate = '';
-    if (booking.decisionTimestamp != null) {
-      actionDate = DateFormat('d MMM yyyy').format(booking.decisionTimestamp!);
+
+    // ลองจัดรูปแบบวันที่
+    try {
+      actionDate = DateFormat(
+        'd MMM yyyy',
+      ).format(DateTime.parse(booking['timestamp']));
+    } catch (_) {
+      actionDate = (booking['timestamp'] ?? '').toString().split('T')[0];
     }
+
+    // จัดรูปแบบวันที่จอง
+    String formattedBookingDate = '';
+    try {
+      formattedBookingDate = DateFormat(
+        'd MMM yyyy',
+      ).format(DateTime.parse(booking['booking_date']));
+    } catch (_) {
+      formattedBookingDate = (booking['booking_date'] ?? '').toString().split(
+        'T',
+      )[0];
+    }
+
     switch (status) {
       case 'approved':
         statusActionText = 'Approved On';
@@ -63,6 +117,14 @@ class _StaffHistoryPageState extends State<StaffHistoryPage>
       default:
         statusActionText = 'Cancelled On';
     }
+
+    // ⭐️ [แก้ไข] สร้าง Path เต็มสำหรับรูปภาพใน Bottom Sheet
+    final String rawImage =
+        booking['room_image']?.toString() ?? 'placeholder.png';
+    final String fullImagePath = rawImage.startsWith('assets/')
+        ? rawImage
+        : 'assets/images/${rawImage.isEmpty ? 'placeholder.png' : rawImage}';
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -84,7 +146,7 @@ class _StaffHistoryPageState extends State<StaffHistoryPage>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Request ID    ${booking.id.toString().padLeft(5, '0')}',
+                          'Request ID    ${(booking['booking_id'] ?? 0).toString().padLeft(5, '0')}',
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontSize: 12,
@@ -92,7 +154,7 @@ class _StaffHistoryPageState extends State<StaffHistoryPage>
                         ),
                         SizedBox(height: 2),
                         Text(
-                          booking.roomName,
+                          (booking['room_name'] ?? 'Unknown Room'),
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -115,7 +177,7 @@ class _StaffHistoryPageState extends State<StaffHistoryPage>
                           ),
                           SizedBox(width: 6),
                           Text(
-                            booking.formattedDate,
+                            formattedBookingDate, // ใช้วันที่จอง
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
@@ -134,7 +196,10 @@ class _StaffHistoryPageState extends State<StaffHistoryPage>
                             ),
                           ),
                           SizedBox(width: 6),
-                          Text(booking.time, style: TextStyle(fontSize: 13)),
+                          Text(
+                            "${booking['start_time']} - ${booking['end_time']}", // ใช้เวลา
+                            style: TextStyle(fontSize: 13),
+                          ),
                         ],
                       ),
                     ],
@@ -145,7 +210,9 @@ class _StaffHistoryPageState extends State<StaffHistoryPage>
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: Image.asset(
-                  booking.image,
+                  // ⭐️⭐️⭐️ [แก้ไขจุดที่ 1] ⭐️⭐️⭐️
+                  // เปลี่ยนจาก (booking['room_image'] ?? ...) เป็น fullImagePath
+                  fullImagePath,
                   height: 150,
                   width: double.infinity,
                   fit: BoxFit.cover,
@@ -164,11 +231,14 @@ class _StaffHistoryPageState extends State<StaffHistoryPage>
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildDetailItem('Booked By', booking.bookedBy),
+                      _buildDetailItem(
+                        'Booked By',
+                        booking['booked_by'] ?? 'N/A',
+                      ),
                       SizedBox(height: 12),
                       _buildDetailItem(
-                        'Requested On',
-                        booking.formattedRequestedOn,
+                        'Requested On', // Backend ไม่มี requested on, ใช้วันที่จองแทน
+                        formattedBookingDate,
                       ),
                     ],
                   ),
@@ -177,7 +247,7 @@ class _StaffHistoryPageState extends State<StaffHistoryPage>
                     children: [
                       _buildDetailItem(
                         'Approved By',
-                        booking.approvedBy ?? 'N/A',
+                        booking['approved_by'] ?? 'N/A',
                       ),
                       SizedBox(height: 12),
                       _buildDetailItem(statusActionText, actionDate),
@@ -191,12 +261,12 @@ class _StaffHistoryPageState extends State<StaffHistoryPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Lecturer Note',
+                      'Lecturer Note', // ⭐️ Staff เห็นเป็น "Lecturer Note" ถูกต้องแล้ว
                       style: TextStyle(color: Colors.grey[600], fontSize: 14),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      booking.rejectReason ?? 'No note provided.',
+                      (booking['reject_reason'] ?? 'No note provided.'),
                       style: TextStyle(fontSize: 16),
                     ),
                     const SizedBox(height: 16),
@@ -251,7 +321,11 @@ class _StaffHistoryPageState extends State<StaffHistoryPage>
     );
   }
 
-  Widget _buildHistoryList(List<BookingRequest> filteredList, String status) {
+  // ⭐️ 8. แก้ไขฟังก์ชัน BuildList (เดี๋ยวนี้ใช้ Map)
+  Widget _buildHistoryList(
+    List<Map<String, dynamic>> filteredList,
+    String status,
+  ) {
     if (filteredList.isEmpty) {
       return Center(
         child: Column(
@@ -281,16 +355,34 @@ class _StaffHistoryPageState extends State<StaffHistoryPage>
     );
   }
 
-  Widget _buildHistoryCard(BookingRequest booking) {
-    final String status = booking.status.toLowerCase();
+  // ⭐️ 9. แก้ไขฟังก์ชัน BuildCard (เดี๋ยวนี้ใช้ Map)
+  Widget _buildHistoryCard(Map<String, dynamic> booking) {
+    final String status = (booking['action'] ?? '').toString().toLowerCase();
     Color statusColor;
     String statusActionText;
     String actionDate = '';
-    if (booking.decisionTimestamp != null) {
+
+    // จัดรูปแบบวันที่จอง
+    String formattedBookingDate = '';
+    try {
+      formattedBookingDate =
+          DateFormat('d MMM yyyy') // ⭐️ แก้ไข typo yyyY เป็น yyyy
+              .format(DateTime.parse(booking['booking_date']));
+    } catch (_) {
+      formattedBookingDate = (booking['booking_date'] ?? '').toString().split(
+        'T',
+      )[0];
+    }
+
+    // จัดรูปแบบวันที่ Action
+    try {
       actionDate = DateFormat(
         'EEE d MMM yyyy',
-      ).format(booking.decisionTimestamp!);
+      ).format(DateTime.parse(booking['timestamp']));
+    } catch (_) {
+      actionDate = (booking['timestamp'] ?? '').toString().split('T')[0];
     }
+
     switch (status) {
       case 'approved':
         statusColor = Color(0xff3BCB53);
@@ -304,6 +396,14 @@ class _StaffHistoryPageState extends State<StaffHistoryPage>
         statusColor = Color(0xff4E534E);
         statusActionText = 'Cancelled On';
     }
+
+    // ⭐️ [แก้ไข] สร้าง Path เต็มสำหรับรูปภาพใน Card
+    final String rawImage =
+        booking['room_image']?.toString() ?? 'placeholder.png';
+    final String fullImagePath = rawImage.startsWith('assets/')
+        ? rawImage
+        : 'assets/images/${rawImage.isEmpty ? 'placeholder.png' : rawImage}';
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -321,12 +421,12 @@ class _StaffHistoryPageState extends State<StaffHistoryPage>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Request ID    ${booking.id.toString().padLeft(5, '0')}',
+                        'Request ID    ${(booking['booking_id'] ?? 0).toString().padLeft(5, '0')}',
                         style: TextStyle(color: Colors.grey[600], fontSize: 12),
                       ),
                       SizedBox(height: 2),
                       Text(
-                        booking.roomName,
+                        (booking['room_name'] ?? 'Unknown Room'),
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -349,7 +449,7 @@ class _StaffHistoryPageState extends State<StaffHistoryPage>
                         ),
                         SizedBox(width: 6),
                         Text(
-                          booking.formattedDate,
+                          formattedBookingDate,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
@@ -369,7 +469,7 @@ class _StaffHistoryPageState extends State<StaffHistoryPage>
                         ),
                         SizedBox(width: 6),
                         Text(
-                          booking.time,
+                          "${booking['start_time']} - ${booking['end_time']}",
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
@@ -385,7 +485,9 @@ class _StaffHistoryPageState extends State<StaffHistoryPage>
           const SizedBox(height: 8),
           ClipRRect(
             child: Image.asset(
-              booking.image,
+              // ⭐️⭐️⭐️ [แก้ไขจุดที่ 2] ⭐️⭐️⭐️
+              // เปลี่ยนจาก (booking['room_image'] ?? ...) เป็น fullImagePath
+              fullImagePath,
               height: 120,
               width: double.infinity,
               fit: BoxFit.cover,
@@ -405,11 +507,14 @@ class _StaffHistoryPageState extends State<StaffHistoryPage>
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildDetailItem('Booked By', booking.bookedBy),
+                    _buildDetailItem(
+                      'Booked By',
+                      booking['booked_by'] ?? 'N/A',
+                    ),
                     SizedBox(height: 12),
                     _buildDetailItem(
-                      'Requested On',
-                      booking.formattedRequestedOn,
+                      'Requested On', // Backend ไม่มี requested on, ใช้วันที่จองแทน
+                      formattedBookingDate,
                     ),
                   ],
                 ),
@@ -418,7 +523,7 @@ class _StaffHistoryPageState extends State<StaffHistoryPage>
                   children: [
                     _buildDetailItem(
                       'Approved By',
-                      booking.approvedBy ?? 'N/A',
+                      booking['approved_by'] ?? 'N/A',
                     ),
                     SizedBox(height: 12),
                     _buildDetailItem(statusActionText, actionDate),
@@ -480,6 +585,7 @@ class _StaffHistoryPageState extends State<StaffHistoryPage>
     );
   }
 
+  // ⭐️ 10. แก้ไข Build หลัก (เดี๋ยวนี้ใช้ _isLoading)
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -488,7 +594,7 @@ class _StaffHistoryPageState extends State<StaffHistoryPage>
         elevation: 3,
         shadowColor: Colors.black54,
         title: Text(
-          'My History',
+          'Booking History', // ⭐️ 11. เปลี่ยนชื่อ Title
           style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
@@ -516,22 +622,27 @@ class _StaffHistoryPageState extends State<StaffHistoryPage>
           ),
         ),
       ),
-      body: ValueListenableBuilder<List<BookingRequest>>(
-        valueListenable: historyRequestsNotifier,
-        builder: (context, allHistory, _) {
-          final allList = _getFilteredBookings(allHistory, 'All');
-          final approvedList = _getFilteredBookings(allHistory, 'approved');
-          final rejectedList = _getFilteredBookings(allHistory, 'rejected');
-          return TabBarView(
-            controller: _tabController,
-            children: [
-              _buildHistoryList(allList, 'All'),
-              _buildHistoryList(approvedList, 'Approved'),
-              _buildHistoryList(rejectedList, 'Rejected'),
-            ],
-          );
-        },
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+          ? Center(child: Text("Error: $_error"))
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _buildHistoryList(
+                  _getFilteredBookings(_allHistory, 'All'),
+                  'All',
+                ),
+                _buildHistoryList(
+                  _getFilteredBookings(_allHistory, 'approved'),
+                  'Approved',
+                ),
+                _buildHistoryList(
+                  _getFilteredBookings(_allHistory, 'rejected'),
+                  'Rejected',
+                ),
+              ],
+            ),
     );
   }
 }

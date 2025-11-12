@@ -1,0 +1,690 @@
+const express = require('express');
+const app = express();
+const bcrypt = require('bcrypt');
+const con = require('./db'); // Database connection
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
+const { body, validationResult } = require('express-validator');
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+
+const JWT_KEY = 'm0bile2Simple';
+
+
+// ================= Middleware ================
+function verifyUser(req, res, next) {
+  let token = req.headers['authorization'] || req.headers['x-access-token'];
+  if (token == undefined || token == null) {
+    // no token
+    return res.status(400).send('No token');
+  }
+
+  // token found
+  if (req.headers.authorization) {
+    const tokenString = token.split(' ');
+    if (tokenString[0] == 'Bearer') {
+      token = tokenString[1];
+    }
+  }
+  jwt.verify(token, JWT_KEY, (err, decoded) => {
+    if (err) {
+      return res.status(401).send('Incorrect token');
+    }
+
+    else {
+      req.decoded = decoded;
+      next();
+    }
+  });
+}
+
+// Login route
+app.post('/auth/login', (req, res) => {
+  const { username, password } = req.body;
+  const sql = "SELECT user_id, password, role FROM users WHERE username = ?";
+
+  console.log("Received login request:", { username, password });
+
+  con.query(sql, [username], function (err, results) {
+    if (err) {
+      console.error("Database query error:", err);
+      return res.status(500).json({ message: 'Server error' });
+    }
+    if (results.length === 0) {
+      return res.status(400).json({ message: 'Wrong username' });
+    }
+
+    const hash = results[0].password;
+    const role = results[0].role;
+
+    bcrypt.compare(password, hash, function (err, same) {
+      if (err) {
+        console.error("Password comparison error:", err);
+        return res.status(500).json({ message: 'Hash error' });
+      }
+      if (!same) {
+        return res.status(401).json({ message: 'Login fail' });
+      }
+
+      const token = jwt.sign(
+        { id: results[0].user_id, username: username, role: role },
+        JWT_KEY,
+        { expiresIn: '5d' }
+      );
+
+      res.cookie('authToken', token, {
+        maxAge: 1000 * 60 * 60 * 24 * 5, // 30 วัน
+        httpOnly: true, // ปลอดภัยจากการถูกอ่านด้วย JS
+        secure: false,  // true ถ้าใช้ HTTPS
+        sameSite: 'lax'
+      });
+
+      res.json({ message: 'Login ok', user_id: results[0].user_id, role: role, token, username: username });
+    });
+  });
+});
+
+
+// Registration route
+app.post('/auth/register', (req, res) => {
+  const { username, password, email } = req.body;
+  console.log("Received registration request:", { username, email });
+
+  if (!username || !password || !email) {
+    console.error("Registration error: Username, email, and password are required");
+    return res.status(400).json({ message: 'Username, email, and password are required' });
+  }
+
+  bcrypt.hash(password, 10, (err, hash) => {
+    if (err) {
+      console.error("Error hashing password:", err);
+      return res.status(500).json({ message: 'Error hashing password' });
+    }
+
+    const sql = "INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, 'Student')";
+    con.query(sql, [username, hash, email], (err, result) => {
+      if (err) {
+        console.error("Database error during registration:", err);
+        return res.status(500).json({ message: 'Database error' });
+      }
+
+      console.log("User registered successfully:", { username, email });
+      res.status(201).json({ message: 'User registered successfully!' });
+    });
+  });
+});
+
+// Logout route
+app.post('/auth/logout', (req, res) => {
+  res.clearCookie('authToken');
+  res.json({ message: 'Logout successful' });
+});
+
+app.get('/auth/profile', (req, res) => {
+  const token = req.cookies.authToken;
+
+  if (!token) {
+    return res.status(401).json({ success: false, message: 'Unauthorized: No token' });
+  }
+  jwt.verify(token, JWT_KEY, (err, decoded) => {
+    if (err) {
+      return res.status(403).json({ success: false, message: 'Invalid or expired token' });
+    }
+    res.json({
+      success: true,
+      message: 'Welcome to your profile',
+      user: {
+        id: decoded.id,
+        username: decoded.username,
+        role: decoded.role
+      }
+    });
+  });
+});
+
+
+
+///=========================================================================
+// GET Browse All rooms
+app.get('/rooms', (req, res) => {
+
+  const roomsSql = 'SELECT room_id, room_name, room_description, room_status, capacity, image FROM rooms';
+
+  con.query(roomsSql, (err, rooms) => {
+    if (err) {
+      console.error('[GET /rooms] (Query 1) error:', err);
+      return res.status(500).json({ error: 'Database server error' });
+    }
+
+
+    const bookingsSql = `
+            SELECT room_id, slot_id 
+            FROM bookings 
+            WHERE booking_date = CURDATE()
+            AND (booking_status = 'Pending' OR booking_status = 'approved')
+        `;
+
+    con.query(bookingsSql, (err, bookings) => {
+      if (err) {
+        console.error('[GET /rooms] (Query 2) error:', err);
+        return res.status(500).json({ error: 'Database server error' });
+      }
+
+      const finalRoomsData = rooms.map(room => {
+
+        const matchingBookings = bookings.filter(booking => {
+          return booking.room_id === room.room_id;
+        });
+        const booked_slots = matchingBookings.map(b => b.slot_id);
+
+        return {
+          ...room,
+          booked_slots: booked_slots
+        };
+      });
+      res.json(finalRoomsData);
+    });
+  });
+});
+
+app.get('/rooms/:id', (req, res) => {
+  const roomId = req.params.id;
+
+  const roomSql = 'SELECT room_id, room_name, room_description, room_status, capacity, image FROM rooms WHERE room_id = ?';
+
+  con.query(roomSql, [roomId], (err, roomResult) => {
+    if (err)
+      return res.status(500).json({ error: err });
+    if (roomResult.length === 0) {
+      return res.status(404).json({ error: 'Room not found' });
+    }
+
+    const roomDetails = roomResult[0];
+
+    // ⭐️ [แก้ไข SQL] ⭐️
+    const slotSql = `SELECT b.slot_id 
+        FROM bookings b
+        JOIN time_slots t ON b.slot_id = t.slot_id 
+        WHERE b.room_id = ?
+        AND b.booking_date = CURDATE()
+        AND b.booking_status IN ('Pending', 'Approved')
+        AND t.end_time > CURTIME()`; // ⭐️ 1. เพิ่มการตรวจสอบเวลาปัจจุบัน
+
+    con.query(slotSql, [roomId], (err, slotResults) => {
+      if (err)
+        return res.status(500).json({ error: err });
+
+      const bookedSlotIds = slotResults.map(row => row.slot_id);
+
+      const finalRes = {
+        ...roomDetails,
+        booked_slots: bookedSlotIds // ⭐️ 2. นี่คือ slot ที่ยังไม่จบ (active/upcoming)
+      }
+      res.json(finalRes);
+    });
+  });
+});
+app.get('/bookings/user', verifyUser, (req, res) => {
+  const decoded = req.decoded;
+  let sql = '';
+
+  if (decoded.role == 'Student')
+    sql = `
+      SELECT 
+        b.booking_id AS id,
+        r.room_name,
+        r.image,
+        DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date,
+        b.slot_id, 
+        b.booking_status AS status,
+        b.booking_reason AS reason,
+        b.reject_reason AS lecturer_note,
+        u_booked.username AS booked_by_name,
+        u_approver.username AS approver_name,
+        COALESCE(b.approved_on, b.rejected_on) AS action_date
+
+      FROM bookings b
+      JOIN rooms r ON b.room_id = r.room_id
+      JOIN users u_booked ON b.user_id = u_booked.user_id
+      LEFT JOIN users u_approver ON b.approved_by = u_approver.user_id
+      WHERE b.user_id = ?  
+      ORDER BY b.booking_date DESC, b.slot_id ASC
+    `;
+  else
+    sql = `
+      SELECT 
+        b.booking_id AS id,
+        r.room_name, r.image, DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date, b.slot_id, 
+        b.booking_status AS status, b.booking_reason AS reason, b.reject_reason AS lecturer_note, 
+        u_booked.username AS booked_by_name, u_approver.username AS approver_name, 
+        COALESCE(b.approved_on, b.rejected_on) AS action_date
+
+      FROM bookings b
+      JOIN rooms r ON b.room_id = r.room_id
+      JOIN users u_booked ON b.user_id = u_booked.user_id
+      LEFT JOIN users u_approver ON b.approved_by = u_approver.user_id
+      WHERE b.approved_by = ? 
+      ORDER BY b.booking_date DESC, b.slot_id ASC
+    `;
+
+  con.query(sql, [decoded.id], (err, result) => {
+    if (err) {
+      console.error("DB error:", err);
+      return res.status(500).json({ error: "Database query failed", details: err.message });
+    }
+    res.json(result);
+  });
+});
+
+app.get('/bookings/user/:userId/today', (req, res) => {
+  const userId = req.params.userId;
+
+  const sql = `
+  SELECT 
+    b.booking_id AS id,
+    r.room_id,
+    r.room_name,
+    r.image,
+    DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date,
+    b.slot_id, 
+    b.booking_status AS status,
+    b.booking_reason AS reason,
+    b.reject_reason AS lecturer_note,
+    u_booked.username AS booked_by_name,
+    u_approver.username AS approver_name,
+    COALESCE(b.approved_on, b.rejected_on) AS action_date
+
+  FROM bookings b
+  JOIN rooms r ON b.room_id = r.room_id
+  JOIN users u_booked ON b.user_id = u_booked.user_id
+  LEFT JOIN users u_approver ON b.approved_by = u_approver.user_id
+  
+  WHERE b.user_id = ? 
+  AND b.booking_date = CURDATE() 
+  AND (b.booking_status = 'pending' OR b.booking_status = 'approved' OR b.booking_status = 'rejected')
+
+  ORDER BY b.slot_id ASC
+`;
+  con.query(sql, [userId], (err, result) => {
+    if (err) {
+      console.error("DB error:", err);
+      return res.status(500).json({ error: "Database query failed", details: err.message });
+    }
+    res.json(result);
+  });
+});
+
+
+app.patch('/bookings/:id/cancel', (req, res) => {
+  const bookingId = req.params.id;
+
+  const selectSql = `SELECT room_id, slot_id FROM bookings WHERE booking_id = ?`;
+  con.query(selectSql, [bookingId], (err, results) => {
+    if (err) return res.status(500).json({ error: 'Database select failed' });
+    if (results.length === 0) return res.status(404).json({ error: 'Booking not found' });
+
+    const { room_id, slot_id } = results[0];
+
+    const updateSql = `UPDATE bookings SET booking_status = 'Cancelled' WHERE booking_id = ?`;
+    con.query(updateSql, [bookingId], (err) => {
+      if (err) return res.status(500).json({ error: 'Booking update failed' });
+
+      const releaseSql = `UPDATE rooms SET room_status = 'Free' WHERE room_id = ?`;
+      con.query(releaseSql, [room_id], (err2) => {
+        if (err2) return res.status(500).json({ error: 'Room update failed' });
+
+        res.json({ message: 'Booking cancelled and room freed' });
+      });
+    });
+  });
+});
+
+app.post('/bookings', verifyUser, (req, res) => {
+  const { room_id, slot_id, booking_date, booking_reason } = req.body;
+  const user_id = req.decoded ? req.decoded.id : null;
+
+  if (!room_id || !slot_id || !booking_date || !user_id) {
+    return res.status(400).json({ error: 'Missing required booking information.' });
+  }
+
+  const sql = "INSERT INTO bookings (room_id, slot_id, booking_date, booking_reason, user_id, booking_status) VALUES (?, ?, ?, ?, ?, 'Pending')";
+
+  con.query(sql, [room_id, slot_id, booking_date, booking_reason || null, user_id], (err, result) => {
+    if (err) {
+      console.error('Booking Error:', err);
+      return res.status(500).json({ error: 'Failed to create booking' });
+    }
+    res.status(200).json({ message: 'Booking request sent!', booking_id: result.insertId });
+  });
+});
+
+// Lecturer: pending requests list
+app.get('/bookings/requests', (req, res) => {
+  con.query(
+    `SELECT b.booking_id, b.booking_status, 
+            CONVERT_TZ(b.booking_date, '+00:00', '+07:00') AS booking_date, 
+            r.room_name, r.image AS room_image, 
+            u.username AS user_name, 
+            t.slot_name, t.start_time, t.end_time 
+     FROM bookings b 
+     JOIN rooms r ON b.room_id = r.room_id 
+     JOIN users u ON b.user_id = u.user_id 
+     JOIN time_slots t ON b.slot_id = t.slot_id 
+     WHERE LOWER(b.booking_status) = 'pending' 
+     ORDER BY b.booking_id DESC`,
+    (err, result) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(result);
+    }
+  );
+});
+
+// Lecturer: approve
+app.patch('/bookings/:id/approve', verifyUser, (req, res) => {
+  if (req.decoded.role !== 'Lecturer' && req.decoded.role !== 'Staff') 
+    return res.status(403).json({ message: 'Forbidden' });
+
+  con.query(
+    "UPDATE bookings SET booking_status = 'approved', approved_by = ?, approved_on = NOW() WHERE booking_id = ? AND LOWER(booking_status) = 'pending'",
+    [req.decoded.id, req.params.id],
+    (err, result) => {
+      if (err) return res.status(500).json({ error: 'Database error' });
+      if (result.affectedRows === 0)
+        return res.status(404).json({ message: 'Not found' });
+
+      res.json({ message: 'Approved' });
+    }
+  );
+});
+
+// Lecturer: reject
+app.patch('/bookings/:id/reject', verifyUser, (req, res) => {
+  if (req.decoded.role !== 'Lecturer' && req.decoded.role !== 'Staff')
+    return res.status(403).json({ message: 'Forbidden' });
+
+  con.query(
+    "UPDATE bookings SET booking_status = 'rejected', reject_reason = ?, approved_by = ?, rejected_on = NOW() WHERE booking_id = ? AND LOWER(booking_status) = 'pending'",
+    [req.body.reject_reason, req.decoded.id, req.params.id],
+    (err, result) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (result.affectedRows === 0)
+        return res.status(404).json({ message: 'Not found' });
+
+      res.json({ message: 'Rejected' });
+    }
+  );
+});
+
+
+// Global history
+app.get('/bookings/history', (req, res) => {
+  con.query(
+    `SELECT b.booking_id, 
+            CASE 
+              WHEN r.room_name LIKE '[ARCHIVED-%' 
+              THEN SUBSTRING_INDEX(r.room_name, '] ', -1)
+              ELSE r.room_name
+            END AS room_name,
+            r.image AS room_image, 
+            t.slot_name,
+            t.start_time,         
+            t.end_time,           
+            CONVERT_TZ(b.booking_date, '+00:00', '+07:00') AS booking_date, 
+            b.booking_status AS action,
+            CONVERT_TZ(
+              CASE 
+                WHEN LOWER(b.booking_status) = 'approved' THEN b.approved_on
+                WHEN LOWER(b.booking_status) = 'rejected' THEN b.rejected_on
+                ELSE b.booking_date
+              END, '+00:00', '+07:00'
+            ) AS timestamp,
+            b.reject_reason, 
+            u.username AS booked_by,
+            a.username AS approved_by
+     FROM bookings b
+     JOIN rooms r ON b.room_id = r.room_id 
+     JOIN time_slots t ON b.slot_id = t.slot_id     
+     JOIN users u ON b.user_id = u.user_id 
+     LEFT JOIN users a ON b.approved_by = a.user_id
+     WHERE LOWER(b.booking_status) IN ('approved','rejected','cancelled')
+     ORDER BY timestamp DESC`,
+    (err, result) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(result || []);
+    }
+  );
+});
+
+
+// Dashboard summary
+app.get('/dashboard/summary', (req, res) => {
+  con.query(
+    `SELECT
+        (SELECT COUNT(*) FROM rooms WHERE room_name NOT LIKE '[ARCHIVED-%') AS totalRooms,
+        (SELECT COUNT(*) FROM rooms WHERE room_status = 'free' AND room_name NOT LIKE '[ARCHIVED-%') AS freeRooms,
+        (SELECT COUNT(*) FROM rooms WHERE room_status = 'disabled' AND room_name NOT LIKE '[ARCHIVED-%') AS disabledRooms,
+        (SELECT COUNT(*) FROM bookings WHERE LOWER(booking_status) = 'pending') AS pendingBookings,
+        (SELECT COUNT(*) FROM bookings WHERE LOWER(booking_status) = 'approved') AS reservedBookings`,
+    (err, result) => {
+      if (err) {
+        console.error("Dashboard Summary SQL Error:", err.message); 
+        return res.status(500).json({ error: 'Database error' });
+      }
+      res.json(result[0]);
+    }
+  );
+});
+
+//  Staff: Update room (PATCH /rooms/:id) - โค้ดที่ขาดไป
+app.patch('/rooms/:id', verifyUser, 
+  [
+    body('room_name').optional().trim().notEmpty(),
+    body('room_description').optional().trim(),
+    body('room_status').optional().isIn(['free', 'disabled']),
+    body('capacity').optional().toInt().isInt({ min: 1 }),
+    body('image').optional().trim()
+  ],
+  (req, res) => {
+    // Check role
+    if (req.decoded.role !== 'Staff' && req.decoded.role !== 'Lecturer')
+      return res.status(403).json({ message: 'Forbidden' });
+
+    // Validate input
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ message: 'Invalid input', errors: errors.array() });
+    }
+
+    let { room_name, room_description, room_status, capacity, image } = req.body;
+    const roomId = req.params.id;
+    
+    // (ฟังก์ชันนี้ต้องถูกนิยามไว้ด้านบนของไฟล์)
+    const todayBangkok = () => new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const today = todayBangkok();
+
+    // RULE: If room has bookings today, only allow updating image field
+    con.query(
+      `SELECT COUNT(*) AS cnt FROM bookings WHERE room_id = ? AND booking_date = ? AND LOWER(booking_status) IN ('pending','approved')`,
+      [roomId, today],
+      (err, bookingCheck) => {
+        if (err) {
+          return res.status(500).json({ message: 'Database error checking bookings' });
+        }
+
+        const hasBookingsToday = bookingCheck[0].cnt > 0;
+
+        if (hasBookingsToday) {
+          // Block all fields except image
+          if (room_name !== undefined || room_description !== undefined || room_status !== undefined || capacity !== undefined) {
+            return res.status(400).json({ 
+              message: 'Room has bookings today. Only image can be updated.' 
+            });
+          }
+          // If only image update, allow it
+          if (image === undefined) {
+            return res.status(400).json({ message: 'No fields to update' });
+          }
+        }
+
+        // Strip asset path from image
+        if (image !== undefined && image.includes('/')) {
+          const parts = image.split('/');
+          image = parts[parts.length - 1];
+        }
+
+        // Build dynamic UPDATE query
+        const updates = [];
+        const values = [];
+
+        if (room_name !== undefined) {
+          updates.push('room_name = ?');
+          values.push(room_name);
+        }
+        if (room_description !== undefined) {
+          updates.push('room_description = ?');
+          values.push(room_description);
+        }
+        if (room_status !== undefined) {
+          updates.push('room_status = ?');
+          values.push(String(room_status).toLowerCase());
+        }
+        if (capacity !== undefined) {
+          updates.push('capacity = ?');
+          values.push(parseInt(capacity, 10));
+        }
+        if (image !== undefined) {
+          updates.push('image = ?');
+          values.push(image);
+        }
+
+        if (updates.length === 0) {
+          return res.status(400).json({ message: 'No fields to update' });
+        }
+
+        values.push(roomId);
+
+        const proceedUpdate = () => {
+          const query = `UPDATE rooms SET ${updates.join(', ')} WHERE room_id = ?`;
+
+          con.query(query, values, (err, result) => {
+            if (err) {
+              return res.status(500).json({ error: 'Database error', details: err.message });
+            }
+            
+            if (result.affectedRows === 0) {
+              return res.status(404).json({ message: 'Room not found' });
+            }
+
+            // Fetch updated room
+            con.query('SELECT * FROM rooms WHERE room_id = ?', [roomId], (err, rooms) => {
+              if (err) {
+                return res.json({ message: 'Room updated' });
+              }
+              
+              const room = rooms[0];
+              res.json({ 
+                message: 'Room updated', 
+                room: {
+                  ...room,
+                  image: room.image && room.image.startsWith('assets/') 
+                    ? room.image 
+                    : `assets/images/${room.image || 'room1.jpg'}`
+                }
+              });
+            });
+          });
+        };
+
+        // If trying to set status to disabled, enforce rules
+        if (room_status && String(room_status).toLowerCase() === 'disabled') {
+          // Check current status first
+          con.query('SELECT room_status FROM rooms WHERE room_id = ?', [roomId], (e0, r0) => {
+            if (e0) {
+              return res.status(500).json({ message: 'Database error' });
+            }
+            if (!r0 || r0.length === 0) {
+              return res.status(404).json({ message: 'Room not found' });
+            }
+            
+            // Must be 'free' to disable
+            if (r0[0].room_status !== 'free') {
+              return res.status(400).json({ message: 'Room must be in free state to disable' });
+            }
+            
+            // Already checked bookings above
+            if (hasBookingsToday) {
+              return res.status(400).json({ message: 'Cannot disable: room has bookings today' });
+            }
+            // OK to proceed
+            proceedUpdate();
+          });
+        } else {
+          // Not trying to disable, proceed normally
+          proceedUpdate();
+        }
+      }
+    );
+  }
+);
+//  Staff: Create room (POST /rooms)
+app.post(
+  '/rooms',
+  verifyUser,
+  [
+    body('room_name').trim().notEmpty(),
+    body('room_description').optional().trim(),
+    body('room_status').optional().isIn(['free', 'disabled']),
+    body('capacity').isInt({ min: 1 }),
+    body('image').optional().trim()
+  ],
+  (req, res) => {
+    // Role check
+    if (req.decoded.role !== 'Staff' && req.decoded.role !== 'Lecturer')
+      return res.status(403).json({ message: 'Forbidden' });
+
+    // Validate input
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ message: 'Invalid input', errors: errors.array() });
+    }
+
+    let { room_name, room_description, room_status, capacity, image } = req.body;
+    const name = String(room_name || '').trim();
+    const desc = (room_description || '').trim();
+    const status = String(room_status || 'free').toLowerCase();
+    const cap = parseInt(capacity, 10);
+    const img = (image || 'room1.jpg').trim();
+
+    const sql = `INSERT INTO rooms (room_name, room_description, room_status, capacity, image) VALUES (?, ?, ?, ?, ?)`;
+    const params = [name, desc, status, cap, img];
+
+    con.query(sql, params, (err, result) => {
+      if (err) {
+        return res.status(500).json({ message: 'Database error', error: err.message });
+      }
+
+      const imageNormalized = img && img.startsWith('assets/') ? img : `assets/images/${img || 'room1.jpg'}`;
+      res.status(201).json({
+        message: 'Room created',
+        room: {
+          room_id: result.insertId,
+          room_name: name,
+          room_description: desc,
+          room_status: status,
+          capacity: cap,
+          image: imageNormalized
+        }
+      });
+    });
+  }
+);
+///=========================================================================
+// ---------- Server starts here ---------
+// root service
+// localhost:3000
+const PORT = 3000;
+app.listen(PORT, "0.0.0.0", () => {
+  console.log('Server is running at ' + PORT);
+});
