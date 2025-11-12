@@ -67,7 +67,7 @@ class _LoginPageState extends State<LoginPage> {
         } else {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const WidgetTree()),
+            MaterialPageRoute(builder: (_) => const StudentWidgetTree()),
           );
         }
       } else {
