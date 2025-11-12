@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:project_br/api_config.dart';
 import 'package:project_br/login/login_page.dart';
-import 'package:project_br/student/student_room_detail_pages.dart';
+import 'package:project_br/student/pages/student_room_detail_page.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -13,6 +14,17 @@ class StudentHomePages extends StatefulWidget {
   State<StudentHomePages> createState() => _StudentHomePagesState();
 }
 
+class TimeSlot {
+  final int id;
+  final String display;
+  final TimeOfDay endTime;
+  const TimeSlot({
+    required this.id,
+    required this.display,
+    required this.endTime,
+  });
+}
+
 class _StudentHomePagesState extends State<StudentHomePages> {
   final _searchBox = TextEditingController();
   List<Map<String, dynamic>> _rooms = [];
@@ -21,6 +33,17 @@ class _StudentHomePagesState extends State<StudentHomePages> {
   String _username = 'Student';
   int _userId = 0;
   bool _hasActiveBooking = false;
+  int? _myBookingRoomId;
+  String _myBookingStatus = '';
+
+  double _t2d(TimeOfDay t) => t.hour + t.minute / 60.0;
+
+  final List<TimeSlot> _timeSlots = const [
+    TimeSlot(id: 1, display: '08-10', endTime: TimeOfDay(hour: 10, minute: 0)),
+    TimeSlot(id: 2, display: '10-12', endTime: TimeOfDay(hour: 12, minute: 0)),
+    TimeSlot(id: 3, display: '13-15', endTime: TimeOfDay(hour: 15, minute: 0)),
+    TimeSlot(id: 4, display: '15-17', endTime: TimeOfDay(hour: 17, minute: 0)),
+  ];
 
   @override
   void initState() {
@@ -60,17 +83,27 @@ class _StudentHomePagesState extends State<StudentHomePages> {
 
   Future<void> _checkMyBookingStatus() async {
     try {
-      final uri = Uri.http(
-        '192.168.1.118:3000',
-        '/my-bookings-today/$_userId',
-      ); //CHANGE IPs
+      final uri = Uri.parse(
+        '${ApiConfig.baseUrl}/bookings/user/$_userId/today',
+      );
       final res = await http.get(uri).timeout(const Duration(seconds: 5));
 
       if (res.statusCode == 200) {
         final List data = jsonDecode(res.body);
         if (mounted) {
           setState(() {
-            _hasActiveBooking = data.isNotEmpty;
+            if (data.isNotEmpty) {
+              final myBooking = data[0];
+              _hasActiveBooking = true;
+              _myBookingRoomId = myBooking['room_id'] as int?;
+
+              _myBookingStatus = (myBooking['status']?.toString() ?? 'pending')
+                  .toLowerCase();
+            } else {
+              _hasActiveBooking = false;
+              _myBookingRoomId = null;
+              _myBookingStatus = '';
+            }
           });
         }
       }
@@ -78,14 +111,12 @@ class _StudentHomePagesState extends State<StudentHomePages> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Error: $e")));
-    } finally {
-      setState(() => _isWaiting = false);
     }
   }
 
   Future<void> _fetchRooms() async {
     try {
-      final uri = Uri.http('127.0.0.1:3000', '/rooms'); //CHANGE IPs
+      final uri = Uri.parse('${ApiConfig.baseUrl}/rooms'); //CHANGE IPs
       final res = await http.get(uri).timeout(const Duration(seconds: 10));
 
       if (res.statusCode == 200) {
@@ -280,15 +311,53 @@ class _StudentHomePagesState extends State<StudentHomePages> {
                           crossAxisCount: 2,
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 16,
-                          childAspectRatio: 3 / 3.7,
+                          childAspectRatio: 3 / 5.0,
                         ),
                     itemBuilder: (context, index) {
                       final room = _filteredRooms()[index];
-                      final isFree =
-                          (room['status'] as String).toLowerCase() == 'free';
+                      final int currentRoomId = room['id'];
+                      final String generalStatus = (room['status'] as String)
+                          .toLowerCase();
+                      final bool isMyActiveBooking =
+                          (currentRoomId == _myBookingRoomId) &&
+                          _hasActiveBooking;
 
-                      final bool canTap = isFree && !_hasActiveBooking;
+                      String displayStatus;
+                      Color displayColor;
+                      bool canTap;
 
+                      if (isMyActiveBooking) {
+                        if (_myBookingStatus == 'pending') {
+                          displayStatus = 'Pending';
+                          displayColor = Colors.yellow[700]!;
+                        } else if (_myBookingStatus == 'approved') {
+                          // 'approved'
+                          displayStatus = 'Reserved';
+                          displayColor = const Color(0xff3BCB53);
+                        } else {
+                          displayStatus = 'Rejected';
+                          displayColor = const Color(0xffDB5151);
+                        }
+                        canTap = false;
+                      } else {
+                        if (generalStatus == 'free') {
+                          if (_hasActiveBooking) {
+                            displayStatus = 'free';
+                            displayColor = Colors.grey[400]!;
+                            canTap = false;
+                          } else {
+                            displayStatus = 'free';
+                            displayColor = const Color(0xff3BCB53);
+                            canTap = true;
+                          }
+                        } else {
+                          displayStatus = room['status'] as String;
+                          displayColor = const Color(0xff4E534E);
+                          canTap = false;
+                        }
+                      }
+                      final capacityRoom = (room['capacity'] as String?) ?? '-';
+                      final List<int> bookedSlots = room['booked_slots'] ?? [];
                       final imageValue = (room['image'] as String?) ?? '';
                       final isNetworkImage = imageValue.startsWith('http');
                       Widget roomImage;
@@ -322,7 +391,8 @@ class _StudentHomePagesState extends State<StudentHomePages> {
                       }
 
                       return GestureDetector(
-                        onTap: canTap
+                        onTap:
+                            canTap // 👈 Use new variable
                             ? () async {
                                 final changed = await Navigator.push<bool>(
                                   context,
@@ -336,9 +406,7 @@ class _StudentHomePagesState extends State<StudentHomePages> {
 
                                 if (!mounted) return;
 
-                                // Refresh ONLY if detail page returned true (i.e., after booking)
                                 if (changed == true) {
-                                  // refresh quietly—no spinner/flicker
                                   await _fetchRooms();
                                   await _checkMyBookingStatus();
                                   if (mounted) setState(() {});
@@ -369,39 +437,166 @@ class _StudentHomePagesState extends State<StudentHomePages> {
                               Padding(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 12,
-                                  vertical: 6,
+                                  vertical: 12,
                                 ),
-                                child: Text(
-                                  room['name'] as String,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    //Room Name
+                                    Flexible(
+                                      child: Text(
+                                        room['name'] as String,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+
+                                    //Capacity
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const SizedBox(width: 8),
+                                        Icon(
+                                          Icons.group,
+                                          size: 16,
+                                          color: Color(0xFF3C9CBF),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          capacityRoom,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.grey[700],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 1.0,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(Icons.lock_clock, size: 15),
+                                        SizedBox(width: 6),
+                                        Text(
+                                          'Available Times',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.grey[700],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 5),
+                                    Row(
+                                      children: List.generate(
+                                        _timeSlots.length,
+                                        (slotIndex) {
+                                          final slot = _timeSlots[slotIndex];
+                                          final double nowDouble = _t2d(
+                                            TimeOfDay.now(),
+                                          );
+                                          final bool isBooked = bookedSlots
+                                              .contains(slot.id);
+                                          final bool isPast =
+                                              nowDouble >= _t2d(slot.endTime);
+                                          final bool isDisabled =
+                                              displayStatus == 'disabled';
+                                          final Color barColor;
+                                          final Color textColor;
+
+                                          if (isDisabled) {
+                                            barColor = Colors.grey[500]!;
+                                            textColor = Colors.grey[700]!;
+                                          } else if (isBooked) {
+                                            barColor = const Color(
+                                              0xffDB5151,
+                                            ); // Booked
+                                            textColor = Colors.white;
+                                          } else if (isPast) {
+                                            barColor =
+                                                Colors.grey[350]!; // time past
+                                            textColor = Colors.grey[700]!;
+                                          } else {
+                                            // Available
+                                            barColor = const Color(0xff3BCB53);
+                                            textColor = Colors.white;
+                                          }
+                                          //container ships time slots
+                                          return Expanded(
+                                            child: Column(
+                                              children: [
+                                                Container(
+                                                  height: 25,
+                                                  margin:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 2.0,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: barColor,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          5,
+                                                        ),
+                                                  ),
+
+                                                  //label
+                                                  child: Center(
+                                                    child: Text(
+                                                      slot.display,
+                                                      style: TextStyle(
+                                                        fontSize: 10,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color: textColor,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                               const Spacer(),
+                              // Status Ships
                               Padding(
                                 padding: const EdgeInsets.only(
                                   left: 12,
                                   right: 12,
                                   bottom: 15,
                                 ),
-                                child: Align(
-                                  alignment: Alignment.centerRight,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 5,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: isFree
-                                          ? (canTap
-                                                ? const Color(0xff3BCB53)
-                                                : Colors.grey[400])
-                                          : const Color(0xff4E534E),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: displayColor,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Center(
                                     child: Text(
-                                      room['status'] as String,
+                                      displayStatus,
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w600,

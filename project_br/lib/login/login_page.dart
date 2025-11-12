@@ -1,11 +1,12 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:project_br/api_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:project_br/login/signup_page.dart';
-import 'package:project_br/staff/pages/linkpage.dart';
-import 'package:project_br/student/widget_tree.dart';
-import 'package:project_br/lecturer/lecturer_widget_tree.dart';
+import 'package:project_br/staff/widgets/staff_widget_tree.dart';
+import 'package:project_br/student/widget/student_tree_widget.dart';
+import 'package:project_br/lecturer/widget/lecturer_tree_widget.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -24,12 +25,9 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> login() async {
     setState(() => isLoading = true);
 
-    // final url = Uri.parse('http://192.168.174.1:3000/auth/login');
-    // final url = Uri.parse('http://127.0.0.1:3000/auth/login');
-
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.1.118:3000/auth/login'),
+        Uri.parse('${ApiConfig.baseUrl}/auth/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           "username": usernameController.text.trim(),
