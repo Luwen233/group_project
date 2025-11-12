@@ -3,7 +3,6 @@ import 'package:project_br/api_config.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:project_br/lecturer/pages/booking_model.dart';
 
 class LecturerRequestPages extends StatefulWidget {
   const LecturerRequestPages({super.key});
@@ -13,7 +12,7 @@ class LecturerRequestPages extends StatefulWidget {
 }
 
 class _LecturerRequestPagesState extends State<LecturerRequestPages> {
-  List<BookingRequest> _pendingRequests = [];
+  List<Map<String, dynamic>> _pendingRequests = [];
   bool _isWaiting = true;
   String? _error;
 
@@ -23,22 +22,65 @@ class _LecturerRequestPagesState extends State<LecturerRequestPages> {
     _loadRequests();
   }
 
+  String _mapSlotIdToTime(int? slotId) {
+    switch (slotId) {
+      case 1:
+        return '08.00 - 10.00 AM';
+      case 2:
+        return '10.00 - 12.00 AM';
+      case 3:
+        return '01.00 - 03.00 PM';
+      case 4:
+        return '03.00 - 05.00 PM';
+      default:
+        return 'Unknown Time';
+    }
+  }
+
   Future<void> _loadRequests() async {
     if (!_isWaiting) {
       setState(() => _isWaiting = true);
     }
 
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      if (token == null) {
+        throw Exception("Token not found. Please log in again.");
+      }
       final uri = Uri.parse('${ApiConfig.baseUrl}/bookings/requests');
-      final res = await http.get(uri).timeout(const Duration(seconds: 10));
+      final res = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
 
       if (res.statusCode == 200) {
         final List data = jsonDecode(res.body);
         if (mounted) {
           setState(() {
-            _pendingRequests = data
-                .map((json) => BookingRequest.fromJson(json))
-                .toList();
+            _pendingRequests = data.map<Map<String, dynamic>>((b) {
+              final status = (b['status'] ?? 'unknown')
+                  .toString()
+                  .toLowerCase();
+              return {
+                'id':
+                    b['id']?.toString() ?? b['booking_id']?.toString() ?? 'N/A',
+                'roomName': b['room_name'] ?? 'Unknown Room',
+                'date': (b['booking_date'] ?? '').toString().split('T')[0],
+                'time': _mapSlotIdToTime(b['slot_id']),
+                'status': status[0].toUpperCase() + status.substring(1),
+                'reason': b['reason'] ?? '',
+                'actionDate': b['action_date'] ?? '', // 'formattedRequestedOn'
+                'image': b['image'] ?? b['room_image'], // รองรับทั้งสอง key
+                'name':
+                    b['booked_by_name'] ??
+                    b['user_name'] ??
+                    'Unknown', // 'bookedBy'
+              };
+            }).toList();
             _isWaiting = false;
             _error = null;
           });
@@ -56,9 +98,9 @@ class _LecturerRequestPagesState extends State<LecturerRequestPages> {
     }
   }
 
-  Future<void> _approveRequest(BookingRequest request) async {
+  Future<void> _approveRequest(Map<String, dynamic> request) async {
     final url = Uri.parse(
-      '${ApiConfig.baseUrl}/bookings/${request.id}/approve',
+      '${ApiConfig.baseUrl}/bookings/${request['id']}/approve',
     );
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token') ?? '';
@@ -74,14 +116,27 @@ class _LecturerRequestPagesState extends State<LecturerRequestPages> {
 
       if (res.statusCode == 200) {
         await _loadRequests(); // Refresh the list
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Request has approved successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
       }
     } catch (e) {
       print('🔥 approveRequest() error: $e');
     }
   }
 
-  Future<void> _rejectRequest(BookingRequest request, String reason) async {
-    final url = Uri.parse('${ApiConfig.baseUrl}/bookings/${request.id}/reject');
+  Future<void> _rejectRequest(Map<String, dynamic> request,String reason,
+  ) async {
+    if (reason.trim().isEmpty){
+      _snack('Please enter the reason for reject');
+      return;
+    }
+    final url = Uri.parse(
+      '${ApiConfig.baseUrl}/bookings/${request['id']}/reject',
+    );
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token') ?? '';
 
@@ -97,15 +152,56 @@ class _LecturerRequestPagesState extends State<LecturerRequestPages> {
 
       if (res.statusCode == 200) {
         await _loadRequests(); // Refresh the list
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Request has rejected successfully'),
+            backgroundColor: Color.fromARGB(255, 94, 28, 23),
+          ),
+        );
       }
     } catch (e) {
       print('🔥 rejectRequest() error: $e');
     }
   }
 
+  void _snack(String message, {Color color = const Color(0xffDB5151)}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message), backgroundColor: color));
+  }
+
+  Future<void> _approveDialog(Map<String, dynamic> request) async {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        icon: const Icon(
+          Icons.check_circle_outline_rounded,
+          color: Color(0xff3BCB53),
+          size: 100,
+        ),
+        title: const Text('Confirm approval'),
+        content: Text('Are you sure you want to approved this request?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('No'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // close dialog
+              _approveRequest(request);
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   final TextEditingController _rejectReasonController = TextEditingController();
 
-  void _showRejectDialog(BookingRequest requestToReject) {
+  void _showRejectDialog(Map<String, dynamic> requestToReject) {
     _rejectReasonController.clear();
     showDialog(
       context: context,
@@ -124,6 +220,7 @@ class _LecturerRequestPagesState extends State<LecturerRequestPages> {
               TextField(
                 controller: _rejectReasonController,
                 maxLines: 5,
+                maxLength: 200,
                 decoration: InputDecoration(
                   hintText: 'Description...',
                   border: OutlineInputBorder(
@@ -135,31 +232,35 @@ class _LecturerRequestPagesState extends State<LecturerRequestPages> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xffDB5151),
-                    ),
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text(
-                      "Cancel",
-                      style: TextStyle(color: Colors.white),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xffDB5151),
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text(
+                        "Cancel",
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                    ),
-                    onPressed: () async {
-                      await _rejectRequest(
-                        requestToReject,
-                        _rejectReasonController.text,
-                      );
-                      if (mounted) Navigator.pop(context);
-                    },
-                    child: const Text(
-                      "Confirm",
-                      style: TextStyle(color: Colors.white),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                      ),
+                      onPressed: () async {
+                        await _rejectRequest(
+                          requestToReject,
+                          _rejectReasonController.text,
+                        );
+                        if (mounted) Navigator.pop(context);
+                      },
+                      child: const Text(
+                        "Confirm",
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
                   ),
                 ],
@@ -171,19 +272,17 @@ class _LecturerRequestPagesState extends State<LecturerRequestPages> {
     );
   }
 
-  // --- 4. MAIN BUILD METHOD ---
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: const Color(0xFFF7F7F7),
       appBar: AppBar(
         title: const Text(
           "Coming Request",
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFF7F7F7),
         elevation: 0,
       ),
       body: Column(
@@ -227,167 +326,182 @@ class _LecturerRequestPagesState extends State<LecturerRequestPages> {
 
     return ListView.builder(
       itemCount: _pendingRequests.length,
-      itemBuilder: (_, index) => _buildRequestCard(_pendingRequests[index]),
+      itemBuilder: (_, index) => _buildMyNewCard(_pendingRequests[index]),
     );
   }
 
   Widget _buildEmptyState() =>
       const Center(child: Text("No upcoming requests yet."));
 
-  Widget _buildRequestCard(BookingRequest request) {
-    return Container(
+  Widget _buildMyNewCard(Map<String, dynamic> request) {
+    final String statusText = "Status";
+    final Color statusColor = Colors.grey;
+    final String imageUrl = (request['image'] as String?) ?? '';
+    print(request);
+
+    return Card(
+      elevation: 2,
       margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: const BorderSide(
+          color: Color.fromARGB(255, 207, 207, 207),
+          width: 1,
+        ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  "Request ID : ${request.id}",
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    "Request ID : ${request['id']}",
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
                 ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    "Date: ${request.formattedDate}",
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    "Time: ${request.formattedTime}",
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          Divider(color: Colors.grey[300]),
-
-          // Middle
-          Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: request.image.startsWith("http")
-                    ? Image.network(
-                        request.image,
-                        width: 160,
-                        height: 110,
-                        fit: BoxFit.cover,
-                      )
-                    : Image.asset(
-                        request.image,
-                        width: 160,
-                        height: 110,
-                        fit: BoxFit.cover,
-                      ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Row(
-                      children: [
-                        Icon(Icons.room_outlined, size: 18),
-                        Text(
-                          request.roomName,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(Icons.person_outline_rounded, size: 18),
-                        const Text(
-                          "Booked By:",
-                          style: TextStyle(fontSize: 13),
-                        ),
-                      ],
-                    ),
-
                     Text(
-                      request.bookedBy,
+                      "Date: ${request['date']}",
                       style: const TextStyle(
+                        fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        fontSize: 13,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(Icons.domain_verification_outlined, size: 18),
-                        const Text(
-                          "Requested On:",
-                          style: TextStyle(fontSize: 13),
-                        ),
-                      ],
-                    ),
                     Text(
-                      request.formattedRequestedOn,
+                      "Time: ${request['time']}",
                       style: const TextStyle(
+                        fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        fontSize: 13,
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          Divider(color: Colors.grey[300]),
+          SizedBox(
+            height: 120,
+            width: double.infinity,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: imageUrl.startsWith("http")
+                  ? Image.network(
+                      imageUrl,
+                      width: 160,
+                      height: 110,
+                      fit: BoxFit.cover,
+                    )
+                  : Image.asset(
+                      imageUrl.isNotEmpty
+                          ? 'assets/images/$imageUrl'
+                          : 'assets/images/placeholder.png',
+                      width: 160,
+                      height: 110,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Image.asset(
+                          'assets/images/placeholder.png',
+                          fit: BoxFit.cover,
+                        );
+                      },
+                    ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 16, left: 16, right: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            request['roomName'],
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Spacer(),
+                      Row(
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.person_outline_rounded, size: 18),
+                              const Text(
+                                "Booked By:",
+                                style: TextStyle(fontSize: 13),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            request['name'],
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
 
-          // Buttons
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => _showRejectDialog(request),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xffDB5151),
-                  ),
-                  child: const Text(
-                    "Reject",
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () async {
-                    // 4. Calls the method inside this class
-                    await _approveRequest(request);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xff3BCB53),
-                  ),
-                  child: const Text(
-                    "Approve",
-                    style: TextStyle(color: Colors.white),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              children: [
+                Row(children: [Text('Reason:')]),
+                Row(children: [Text(request['reason'])]),
+              ],
+            ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => _showRejectDialog(request),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xffDB5151),
+                    ),
+                    child: const Text(
+                      "Reject",
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      // await _approveRequest(request);
+                      await _approveDialog(request);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xff3BCB53),
+                    ),
+                    child: const Text(
+                      "Approve",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
