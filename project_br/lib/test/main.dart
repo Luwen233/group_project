@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:project_br/lecturer/widget/lecturer_tree_widget.dart';
 import 'package:project_br/login/login_page.dart';
 import 'package:project_br/login/signup_page.dart';
+import 'package:project_br/staff/widgets/staff_tree_widget.dart';
 import 'package:project_br/student/widget/student_tree_widget.dart';
 
 void main() {
@@ -23,8 +24,9 @@ class MyApp extends StatelessWidget {
       routes: {
         '/login': (_) => const LoginPage(),
         '/signup': (_) => const SignUpPage(),
-        '/homeLecturer': (_) => const LecturerWidgetTree(),
         '/homeStudent': (_) => const StudentWidgetTree(),
+        '/homeLecturer': (_) => const LecturerWidgetTree(),
+        '/homeStaff': (_) => const StaffWidgetTree(),
       },
     );
   }
