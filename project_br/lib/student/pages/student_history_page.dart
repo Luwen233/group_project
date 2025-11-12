@@ -32,6 +32,22 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
     }
   }
 
+  String _formatIsoTo12HourTime(dynamic rawDate) {
+    if (rawDate == null || rawDate.toString().isEmpty) {
+      return '-';
+    }
+
+    try {
+      final DateTime parsedDate = DateTime.parse(rawDate.toString());
+      
+      return DateFormat('hh:mm a').format(parsedDate);
+
+    } catch (e) {
+      print('Error parsing date: $e');
+      return '-';
+    }
+  }
+
   bool _isHistoryItem(Map<String, dynamic> booking) {
     final String status = booking['status'] ?? '';
     final String bookingDateStr = booking['date'] ?? '';
@@ -98,7 +114,8 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
               'reason': b['reason'] ?? '',
               'approver': b['approver_name'] ?? '-',
               'lecturerNote': b['lecturer_note'] ?? '',
-              'actionDate': b['action_date'] ?? '',
+              'actionDate': b['action_date'] ?? '-',
+              'actionTime': _formatIsoTo12HourTime(b['action_date']),
               'image': b['image'],
               'name': b['booked_by_name'] ?? 'Unknown',
             };
@@ -189,7 +206,10 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
                 const SizedBox(height: 20),
                 _buildDetailItem('Booked By', booking['name']),
                 _buildDetailItem('Approved By', booking['approver']),
-                _buildDetailItem(statusActionText, booking['actionDate']),
+                if(booking['actionDate'] != '-')
+                  _buildDetailItem(statusActionText, booking['actionTime']),
+                if(booking['actionDate'] == '-')
+                  _buildDetailItem(statusActionText, booking['actionDate']),  
                 const SizedBox(height: 15),
                 if (booking['reason'] != null && booking['reason'] != '')
                   _buildDetailItem('Reason', booking['reason']),
