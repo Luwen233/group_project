@@ -400,23 +400,162 @@ app.patch('/bookings/:id/approve', verifyUser, (req, res) => {
 });
 
 // Lecturer: reject
-app.patch('/bookings/:id/reject', verifyUser, (req, res) => {
-  if (req.decoded.role !== 'Lecturer' && req.decoded.role !== 'Staff')
-    return res.status(403).json({ message: 'Forbidden' });
+app.patch('/rooms/:id', verifyUser, 
+  [
+    body('room_name').optional().trim().notEmpty(),
+    body('room_description').optional().trim(),
+    body('room_status').optional().isIn(['free', 'disabled']),
+    body('capacity').optional().toInt().isInt({ min: 1 }),
+    body('image').optional().trim()
+  ],
+  (req, res) => {
+    // Check role
+    if (req.decoded.role !== 'Staff' && req.decoded.role !== 'Lecturer')
+      return res.status(403).json({ message: 'Forbidden' });
 
-  con.query(
-    "UPDATE bookings SET booking_status = 'rejected', reject_reason = ?, approved_by = ?, rejected_on = NOW() WHERE booking_id = ? AND LOWER(booking_status) = 'pending'",
-    [req.body.reject_reason, req.decoded.id, req.params.id],
-    (err, result) => {
-      if (err) return res.status(500).json({ error: err.message });
-      if (result.affectedRows === 0)
-        return res.status(404).json({ message: 'Not found' });
-
-      res.json({ message: 'Rejected' });
+    // Validate input
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ message: 'Invalid input', errors: errors.array() });
     }
-  );
-});
 
+    let { room_name, room_description, room_status, capacity, image } = req.body;
+    const roomId = req.params.id;
+    
+    const todayBangkok = () => new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const today = todayBangkok();
+
+    // ⭐️ [แก้ไข SQL] ⭐️
+    con.query(
+      `SELECT COUNT(*) AS cnt 
+       FROM bookings b
+       JOIN time_slots t ON b.slot_id = t.slot_id
+       WHERE b.room_id = ? 
+       AND b.booking_date = ? 
+       AND b.booking_status IN ('pending','approved')
+       AND t.end_time > CURTIME()`, // ⭐️ 1. เพิ่มการตรวจสอบเวลาปัจจุบัน
+      [roomId, today],
+      (err, bookingCheck) => {
+        if (err) {
+          return res.status(500).json({ message: 'Database error checking bookings' });
+        }
+
+        // ⭐️ 2. นี่คือ "มีการจองที่ยังไม่จบ"
+        const hasBookingsToday = bookingCheck[0].cnt > 0; 
+
+        if (hasBookingsToday) {
+          // Block all fields except image
+          if (room_name !== undefined || room_description !== undefined || room_status !== undefined || capacity !== undefined) {
+            return res.status(400).json({ 
+              message: 'Room has active/upcoming bookings. Only image can be updated.' 
+            });
+          }
+          // If only image update, allow it
+          if (image === undefined) {
+            return res.status(400).json({ message: 'No fields to update' });
+          }
+        }
+
+        // Strip asset path from image
+        if (image !== undefined && image.includes('/')) {
+          const parts = image.split('/');
+          image = parts[parts.length - 1];
+        }
+
+        // Build dynamic UPDATE query
+        const updates = [];
+        const values = [];
+
+        if (room_name !== undefined) {
+          updates.push('room_name = ?');
+          values.push(room_name);
+        }
+        if (room_description !== undefined) {
+          updates.push('room_description = ?');
+          values.push(room_description);
+        }
+        if (room_status !== undefined) {
+          updates.push('room_status = ?');
+          values.push(String(room_status).toLowerCase());
+        }
+        if (capacity !== undefined) {
+          updates.push('capacity = ?');
+          values.push(parseInt(capacity, 10));
+        }
+        if (image !== undefined) {
+          updates.push('image = ?');
+          values.push(image);
+        }
+
+        if (updates.length === 0) {
+          return res.status(400).json({ message: 'No fields to update' });
+        }
+
+        values.push(roomId);
+
+        const proceedUpdate = () => {
+          const query = `UPDATE rooms SET ${updates.join(', ')} WHERE room_id = ?`;
+
+          con.query(query, values, (err, result) => {
+            if (err) {
+              return res.status(500).json({ error: 'Database error', details: err.message });
+            }
+            
+            if (result.affectedRows === 0) {
+              return res.status(404).json({ message: 'Room not found' });
+            }
+
+            // Fetch updated room
+            con.query('SELECT * FROM rooms WHERE room_id = ?', [roomId], (err, rooms) => {
+              if (err) {
+                return res.json({ message: 'Room updated' });
+              }
+              
+              const room = rooms[0];
+              res.json({ 
+                message: 'Room updated', 
+                room: {
+                  ...room,
+                  image: room.image && room.image.startsWith('assets/') 
+                    ? room.image 
+                    : `assets/images/${room.image || 'room1.jpg'}`
+                }
+              });
+            });
+          });
+        };
+
+        // If trying to set status to disabled, enforce rules
+        if (room_status && String(room_status).toLowerCase() === 'disabled') {
+          // Check current status first
+          con.query('SELECT room_status FROM rooms WHERE room_id = ?', [roomId], (e0, r0) => {
+            if (e0) {
+              return res.status(500).json({ message: 'Database error' });
+            }
+            if (!r0 || r0.length === 0) {
+              return res.status(404).json({ message: 'Room not found' });
+            }
+            
+            // Must be 'free' to disable
+            if (r0[0].room_status !== 'free') {
+              return res.status(400).json({ message: 'Room must be in free state to disable' });
+            }
+            
+            // Already checked bookings above
+            if (hasBookingsToday) {
+              return res.status(400).json({ message: 'Cannot disable: room has bookings today' });
+            }
+            // OK to proceed
+            proceedUpdate();
+          });
+        } else {
+          // Not trying to disable, proceed normally
+          proceedUpdate();
+        }
+      }
+    );
+  }
+);
 
 // Global history
 app.get('/bookings/history', (req, res) => {

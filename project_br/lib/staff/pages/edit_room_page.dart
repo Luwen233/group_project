@@ -207,7 +207,7 @@ class _EditRoomPageState extends State<EditRoomPage> {
                       Row(
                         children: [
                           const Text(
-                            "Quantity",
+                            "Capacity",
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.black54,
