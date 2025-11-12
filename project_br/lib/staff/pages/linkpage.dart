@@ -3,7 +3,6 @@ import 'package:project_br/staff/pages/add_room_page.dart';
 import 'package:project_br/staff/pages/history_page.dart';
 import 'package:project_br/staff/pages/home_page.dart';
 
-
 void main() {
   runApp(const RoomApp());
 }
@@ -34,11 +33,18 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
+  final ValueNotifier<bool> _refreshNotifier = ValueNotifier(false);
 
-  final List<Widget> _pages = const [
-    HomePage(),
-    AddRoomPage(),
-    HistoryPage(),
+  List<Widget> get _pages => [
+    HomePage(refreshNotifier: _refreshNotifier),
+    AddRoomPage(
+      onRoomAdded: () {
+        // เมื่อเพิ่มห้องสำเร็จ กลับไป Home tab
+        setState(() => _selectedIndex = 0);
+        _refreshNotifier.value = !_refreshNotifier.value; // Trigger refresh
+      },
+    ),
+    const StaffHistoryPage(),
   ];
 
   @override
@@ -52,11 +58,14 @@ class _MainNavigationState extends State<MainNavigation> {
         unselectedItemColor: Colors.grey,
         items: const [
           BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined), label: "Home"),
+            icon: Icon(Icons.home_outlined),
+            label: "Home",
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.add_box_outlined), label: "Add rooms"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.history), label: "History"),
+            icon: Icon(Icons.add_box_outlined),
+            label: "Add rooms",
+          ),
+          BottomNavigationBarItem(icon: Icon(Icons.history), label: "History"),
         ],
       ),
     );
