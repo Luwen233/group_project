@@ -1,174 +1,235 @@
 import 'package:flutter/material.dart';
 
-class HistoryPage extends StatefulWidget {
-  const HistoryPage({super.key});
+import 'package:intl/intl.dart';
+import 'package:project_br/lecturer/pages/booking_model.dart';
+import 'package:project_br/lecturer/booking_notifiers.dart';
+import 'package:project_br/lecturer/booking_service.dart';
+
+class StaffHistoryPage extends StatefulWidget {
+  const StaffHistoryPage({super.key});
 
   @override
-  State<HistoryPage> createState() => _HistoryPageState();
+  State<StaffHistoryPage> createState() => _StaffHistoryPageState();
 }
 
-class _HistoryPageState extends State<HistoryPage> {
-  // Mock data
-  final List<Map<String, dynamic>> histories = [
-    {
-      'id': '00001',
-      'roomName': 'Study Room',
-      'status': 'Approved',
-      'name': 'Mr. John',
-      'approver': 'Mr. John',
-      'date': 'Sep 22, 2025',
-      'actionDate': 'Sep 22, 2025',
-      'time': '03:00 - 05:00 PM',
-      'image': 'assets/images/room1.jpg',
-      'reason': 'Mai mi arai krub baebi.',
-      'lecturerNote': '',
-    },
-    {
-      'id': '00002',
-      'roomName': 'Law Study Room',
-      'status': 'Rejected',
-      'name': 'Mr. John',
-      'approver': 'Mr. Fred',
-      'date': 'Sep 22, 2025',
-      'actionDate': 'Sep 22, 2025',
-      'time': '10:00 - 12:00 AM',
-      'image': 'assets/images/room2.jpg',
-      'reason': 'Room is reserved for a faculty meeting.',
-      'lecturerNote': 'Please reschedule to next week.',
-    },
-    {
-      'id': '00012',
-      'roomName': 'Meeting Room',
-      'status': 'Approved',
-      'name': 'Ms. Amy',
-      'approver': 'Mr. John',
-      'date': 'Sep 10, 2025',
-      'actionDate': 'Sep 10, 2025',
-      'time': '01:00 - 03:00 PM',
-      'image': 'assets/images/room3.jpg',
-      'reason': 'N/A',
-      'lecturerNote': '',
-    },
-  ];
+class _StaffHistoryPageState extends State<StaffHistoryPage>
+    with TickerProviderStateMixin {
+  late TabController _tabController;
 
-  // Filter list by status
-  List<Map<String, dynamic>> _getFilteredBookings(String status) {
-    if (status == 'All') return histories;
-    return histories.where((b) => b['status'] == status).toList();
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+    fetchHistoryRequests();
   }
 
-  // Show bottom sheet
-  void _showMoreDetailsSheet(
-    BuildContext context,
-    Map<String, dynamic> booking,
-  ) {
-    final String status = booking['status'] ?? 'Rejected';
-    Color statusColor;
-    String statusActionText;
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
+  List<BookingRequest> _getFilteredBookings(
+    List<BookingRequest> allBookings,
+    String status,
+  ) {
+    final processedBookings = allBookings
+        .where(
+          (b) =>
+              b.status.toLowerCase() == 'approved' ||
+              b.status.toLowerCase() == 'rejected',
+        )
+        .toList();
+    if (status == 'All') return processedBookings;
+    return processedBookings
+        .where((b) => b.status.toLowerCase() == status.toLowerCase())
+        .toList();
+  }
+
+  void _showMoreDetailsSheet(BuildContext context, BookingRequest booking) {
+    final String status = booking.status.toLowerCase();
+    String statusActionText;
+    String actionDate = '';
+    if (booking.decisionTimestamp != null) {
+      actionDate = DateFormat('d MMM yyyy').format(booking.decisionTimestamp!);
+    }
     switch (status) {
-      case 'Approved':
-        statusColor = const Color(0xff3BCB53);
+      case 'approved':
         statusActionText = 'Approved On';
         break;
-      case 'Rejected':
-      default:
-        statusColor = const Color(0xffDB5151);
+      case 'rejected':
         statusActionText = 'Rejected On';
+        break;
+      default:
+        statusActionText = 'Cancelled On';
     }
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: SingleChildScrollView(
+      builder: (BuildContext context) {
+        return Padding(
+          padding: const EdgeInsets.all(20.0),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Request ID: ${booking['id']}',
-                style: TextStyle(color: Colors.grey[600], fontSize: 14),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                booking['roomName'] ?? 'Unknown Room',
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Date: ${booking['date']}'),
-                  Text('Time: ${booking['time']}'),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Request ID    ${booking.id.toString().padLeft(5, '0')}',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 12,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          booking.roomName,
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Date',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 12,
+                            ),
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            booking.formattedDate,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Text(
+                            'Time',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 12,
+                            ),
+                          ),
+                          SizedBox(width: 6),
+                          Text(booking.time, style: TextStyle(fontSize: 13)),
+                        ],
+                      ),
+                    ],
+                  ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: Image.asset(
-                  booking['image'],
+                  booking.image,
                   height: 150,
                   width: double.infinity,
                   fit: BoxFit.cover,
+                  errorBuilder: (c, e, s) => Container(
+                    height: 150,
+                    color: Colors.grey[200],
+                    child: Icon(Icons.broken_image, color: Colors.grey[400]),
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildDetailItem('Booked By', booking['name']),
-                      const SizedBox(height: 12),
-                      _buildDetailItem('Requested On', booking['date']),
+                      _buildDetailItem('Booked By', booking.bookedBy),
+                      SizedBox(height: 12),
+                      _buildDetailItem(
+                        'Requested On',
+                        booking.formattedRequestedOn,
+                      ),
                     ],
                   ),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildDetailItem('Approved By', booking['approver']),
-                      const SizedBox(height: 12),
-                      _buildDetailItem(statusActionText, booking['actionDate']),
+                      _buildDetailItem(
+                        'Approved By',
+                        booking.approvedBy ?? 'N/A',
+                      ),
+                      SizedBox(height: 12),
+                      _buildDetailItem(statusActionText, actionDate),
                     ],
                   ),
                 ],
               ),
               const SizedBox(height: 20),
-              _buildDetailItem('Reason Requested', booking['reason']),
-              if (status == 'Rejected') ...[
-                const SizedBox(height: 16),
-                _buildDetailItem('Lecturer Note', booking['lecturerNote']),
-              ],
-              const SizedBox(height: 20),
+              if (status == 'rejected')
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Lecturer Note',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      booking.rejectReason ?? 'No note provided.',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: statusColor,
+                    backgroundColor: Color(0xff3BCB53),
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  onPressed: () => Navigator.pop(context),
                   child: const Text(
                     'OK',
-                    style: TextStyle(color: Colors.white, fontSize: 18),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
             ],
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -177,23 +238,21 @@ class _HistoryPageState extends State<HistoryPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
+          style: TextStyle(
             color: Colors.black,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
           ),
         ),
       ],
     );
   }
 
-  // Build List for each tab
-  Widget _buildHistoryList(String status) {
-    final list = _getFilteredBookings(status);
-    if (list.isEmpty) {
+  Widget _buildHistoryList(List<BookingRequest> filteredList, String status) {
+    if (filteredList.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -201,8 +260,9 @@ class _HistoryPageState extends State<HistoryPage> {
             Icon(Icons.history_toggle_off, size: 60, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
-              'No ${status.toLowerCase()} history yet.',
-              style: const TextStyle(
+              'No ${status.toLowerCase()} bookings yet.',
+              style: TextStyle(
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: Colors.black54,
               ),
@@ -211,65 +271,159 @@ class _HistoryPageState extends State<HistoryPage> {
         ),
       );
     }
-
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: list.length,
-      itemBuilder: (_, i) => _buildHistoryCard(list[i]),
+      padding: EdgeInsets.all(20),
+      itemCount: filteredList.length,
+      itemBuilder: (context, index) {
+        final booking = filteredList[index];
+        return _buildHistoryCard(booking);
+      },
     );
   }
 
-  Widget _buildHistoryCard(Map<String, dynamic> booking) {
-    final String status = booking['status'];
+  Widget _buildHistoryCard(BookingRequest booking) {
+    final String status = booking.status.toLowerCase();
     Color statusColor;
-
-    switch (status) {
-      case 'Approved':
-        statusColor = const Color(0xff3BCB53);
-        break;
-      case 'Rejected':
-      default:
-        statusColor = const Color(0xffDB5151);
+    String statusActionText;
+    String actionDate = '';
+    if (booking.decisionTimestamp != null) {
+      actionDate = DateFormat(
+        'EEE d MMM yyyy',
+      ).format(booking.decisionTimestamp!);
     }
-
+    switch (status) {
+      case 'approved':
+        statusColor = Color(0xff3BCB53);
+        statusActionText = 'Approved On';
+        break;
+      case 'rejected':
+        statusColor = Color(0xffDB5151);
+        statusActionText = 'Rejected On';
+        break;
+      default:
+        statusColor = Color(0xff4E534E);
+        statusActionText = 'Cancelled On';
+    }
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      margin: EdgeInsets.only(bottom: 16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Request ID: ${booking['id']}',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Request ID    ${booking.id.toString().padLeft(5, '0')}',
+                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        booking.roomName,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                Text(
-                  booking['date'],
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'Date',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 12,
+                          ),
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          booking.formattedDate,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Text(
+                          'Time',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 12,
+                          ),
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          booking.time,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 8),
           ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
             child: Image.asset(
-              booking['image'],
+              booking.image,
               height: 120,
               width: double.infinity,
               fit: BoxFit.cover,
+              errorBuilder: (c, e, s) => Container(
+                height: 120,
+                color: Colors.grey[200],
+                child: Icon(Icons.broken_image, color: Colors.grey[400]),
+              ),
             ),
           ),
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildDetailItem('Booked By', booking['name']),
-                _buildDetailItem('Approved By', booking['approver']),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildDetailItem('Booked By', booking.bookedBy),
+                    SizedBox(height: 12),
+                    _buildDetailItem(
+                      'Requested On',
+                      booking.formattedRequestedOn,
+                    ),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildDetailItem(
+                      'Approved By',
+                      booking.approvedBy ?? 'N/A',
+                    ),
+                    SizedBox(height: 12),
+                    _buildDetailItem(statusActionText, actionDate),
+                  ],
+                ),
               ],
             ),
           ),
@@ -279,15 +433,16 @@ class _HistoryPageState extends State<HistoryPage> {
               children: [
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: EdgeInsets.symmetric(vertical: 10),
                     decoration: BoxDecoration(
                       color: statusColor,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Center(
                       child: Text(
-                        status,
-                        style: const TextStyle(
+                        status.substring(0, 1).toUpperCase() +
+                            status.substring(1),
+                        style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
@@ -295,22 +450,24 @@ class _HistoryPageState extends State<HistoryPage> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => _showMoreDetailsSheet(context, booking),
+                    onPressed: () {
+                      _showMoreDetailsSheet(context, booking);
+                    },
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(color: Colors.grey[400]!),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      padding: EdgeInsets.symmetric(vertical: 10),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text(
+                    child: Text(
                       'More',
                       style: TextStyle(
-                        fontWeight: FontWeight.bold,
                         color: Colors.black54,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
@@ -325,32 +482,55 @@ class _HistoryPageState extends State<HistoryPage> {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text(
-            'All History',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
-          ),
-          bottom: TabBar(
-            labelColor: const Color(0xff3C9CBF),
-            unselectedLabelColor: const Color(0xff4E534E),
-            indicatorColor: const Color(0xff3C9CBF),
-            tabs: const [
-              Tab(text: 'All'),
-              Tab(text: 'Approved'),
-              Tab(text: 'Rejected'),
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Color(0xFFF7F7F7),
+        elevation: 3,
+        shadowColor: Colors.black54,
+        title: Text(
+          'My History',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+        bottom: PreferredSize(
+          preferredSize: Size.fromHeight(67),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Divider(thickness: 1, height: 0),
+              Padding(
+                padding: EdgeInsets.zero,
+                child: TabBar(
+                  controller: _tabController,
+                  labelColor: Color(0xff3C9CBF),
+                  unselectedLabelColor: Color(0xff4E534E),
+                  indicatorColor: Color(0xff3C9CBF),
+                  tabs: [
+                    Tab(text: 'All'),
+                    Tab(text: 'Approved'),
+                    Tab(text: 'Rejected'),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
-        body: TabBarView(
-          children: [
-            _buildHistoryList('All'),
-            _buildHistoryList('Approved'),
-            _buildHistoryList('Rejected'),
-          ],
-        ),
+      ),
+      body: ValueListenableBuilder<List<BookingRequest>>(
+        valueListenable: historyRequestsNotifier,
+        builder: (context, allHistory, _) {
+          final allList = _getFilteredBookings(allHistory, 'All');
+          final approvedList = _getFilteredBookings(allHistory, 'approved');
+          final rejectedList = _getFilteredBookings(allHistory, 'rejected');
+          return TabBarView(
+            controller: _tabController,
+            children: [
+              _buildHistoryList(allList, 'All'),
+              _buildHistoryList(approvedList, 'Approved'),
+              _buildHistoryList(rejectedList, 'Rejected'),
+            ],
+          );
+        },
       ),
     );
   }
