@@ -224,6 +224,45 @@ app.get('/rooms/:id', (req, res) => {
   });
 });
 
+// ================Edit ROom=========================
+app.patch('/rooms/:id', verifyUser, (req, res) => {
+  const userRole = req.decoded.role.toLowerCase();
+  if (userRole !== 'staff') {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+
+  const roomId = req.params.id;
+  const { room_name, room_description, room_status, capacity } = req.body;
+
+  if (!room_name || !room_description || !room_status || !capacity) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  const sql = `
+    UPDATE rooms 
+    SET 
+      room_name = ?, 
+      room_description = ?, 
+      room_status = ?,
+      capacity = ?
+    WHERE room_id = ?
+  `;
+  con.query(
+    sql,
+    [room_name, room_description, room_status, capacity, roomId],
+    (err, result) => {
+      if (err) {
+        console.error('Room Update Error:', err);
+        return res.status(500).json({ error: 'Database update failed' });
+      }
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: 'Room not found' });
+      }
+      res.status(200).json({ message: 'Room updated successfully' });
+    }
+  );
+});
+
 app.get('/bookings/user/:userId', verifyUser, (req, res) => {
   const userId = req.params.userId;
   let sql = '';
@@ -358,18 +397,6 @@ app.post('/bookings', verifyUser, (req, res) => {
   });
 });
 
-// app.patch('/bookings/:id/cancel', (req, res) => {
-//     const bookingId = req.params.id;
-//     const sql = "UPDATE bookings SET booking_status = 'Cancelled' WHERE booking_id = ?";
-
-//     con.query(sql, [bookingId], (err, result) => {
-//         if (err) return res.status(500).json({ error: err });
-//         if (result.affectedRows === 0) {
-//             return res.status(404).json({ error: 'Booking not found' });
-//         }
-//         res.json({ message: 'Booking cancelled' });
-//     });
-// });
 
 // Lecturer: pending requests list
 app.get('/bookings/requests', (req, res) => {
