@@ -185,7 +185,6 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
           ],
         ),
       ),
-
       body: _isWaiting
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -287,7 +286,6 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
                     ),
                   ),
                 ),
-
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(14, 10, 14, 24),
                   sliver: SliverGrid.builder(
@@ -297,7 +295,10 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
                           crossAxisCount: 2,
                           crossAxisSpacing: 14,
                           mainAxisSpacing: 18,
-                          childAspectRatio: 3 / 5.0,
+                          // ⭐️ [แก้ไข]
+                          // เปลี่ยนจาก 3 / 5.0 (คือ 0.6)
+                          // เป็น 0.55 เพื่อให้การ์ดสูงขึ้น
+                          childAspectRatio: 0.55,
                         ),
                     itemBuilder: (_, i) {
                       final list = _search(_rooms);

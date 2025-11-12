@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:project_br/api_config.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart'; // ⭐️ ต้องมี Import นี้
 
 class LecturerHistoryPages extends StatefulWidget {
   const LecturerHistoryPages({super.key});
@@ -254,16 +255,40 @@ class _LecturerHistoryPagesState extends State<LecturerHistoryPages>
     );
   }
 
+  // ⭐️ [แก้ไข] ฟังก์ชันนี้
   void _showMoreDetailsSheet(
     BuildContext context,
     Map<String, dynamic> booking,
   ) {
     final String status = booking['status'] ?? 'Cancelled';
-    String statusActionText = switch (status) {
-      'Approved' => 'Approved On',
-      'Rejected' => 'Rejected On',
-      _ => 'Cancelled On',
-    };
+
+    String statusActionDateLabel = 'Approved On';
+    String statusActionTimeLabel = 'Approved Time';
+
+    if (status == 'Rejected') {
+      statusActionDateLabel = 'Rejected On';
+      statusActionTimeLabel = 'Rejected Time';
+    } else if (status == 'Cancelled') {
+      statusActionDateLabel = 'Cancelled On';
+      statusActionTimeLabel = 'Cancelled Time';
+    }
+
+    String formattedActionDate = '-';
+    String formattedActionTime = '-';
+
+    try {
+      final String rawActionDate = booking['actionDate'] ?? '';
+
+      if (rawActionDate.isNotEmpty) {
+        final dateTime = DateTime.parse(rawActionDate).toLocal();
+
+        formattedActionDate = DateFormat('d MMM yyyy').format(dateTime);
+        // ⭐️⭐️⭐️ [แก้ไข] เปลี่ยน 'HH:mm' เป็น 'h:mm a' ⭐️⭐️⭐️
+        formattedActionTime = DateFormat('h:mm a').format(dateTime);
+      }
+    } catch (e) {
+      formattedActionDate = booking['actionDate'];
+    }
 
     showModalBottomSheet(
       context: context,
@@ -305,7 +330,13 @@ class _LecturerHistoryPagesState extends State<LecturerHistoryPages>
                 const SizedBox(height: 20),
                 _buildDetailItem('Booked By', booking['name']),
                 _buildDetailItem('Approved By', booking['approver']),
-                _buildDetailItem(statusActionText, booking['actionDate']),
+
+                // แสดงผลวันที่
+                _buildDetailItem(statusActionDateLabel, formattedActionDate),
+
+                // แสดงผลเวลา (AM/PM)
+                _buildDetailItem(statusActionTimeLabel, formattedActionTime),
+
                 const SizedBox(height: 15),
                 if (booking['reason'] != '')
                   _buildDetailItem('Reason', booking['reason']),
