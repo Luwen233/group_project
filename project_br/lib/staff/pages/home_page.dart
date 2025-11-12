@@ -153,7 +153,7 @@ class _HomePageState extends State<HomePage> {
             content: Text('Room updated successfully!'),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
-            margin: EdgeInsets.all(12),
+            margin: EdgeInsets.all(16),
           ),
         );
       }
