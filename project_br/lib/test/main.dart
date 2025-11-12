@@ -23,8 +23,8 @@ class MyApp extends StatelessWidget {
       routes: {
         '/login': (_) => const LoginPage(),
         '/signup': (_) => const SignUpPage(),
-        '/homelecturer': (_) => const LecturerWidgetTree(),
-        '/home': (_) => const WidgetTree(),
+        '/homeLecturer': (_) => const LecturerWidgetTree(),
+        '/homeStudent': (_) => const StudentWidgetTree(),
       },
     );
   }
