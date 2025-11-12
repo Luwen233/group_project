@@ -48,7 +48,7 @@ class _LecturerHistoryPagesState extends State<LecturerHistoryPages>
       if (userId == null) throw Exception("User ID not found. Please log in again.");
 
       final token = prefs.getString('token');
-      final uri = Uri.parse('${ApiConfig.baseUrl}/bookings/user/$userId');
+      final uri = Uri.parse('${ApiConfig.baseUrl}/bookings/user');
       final res = await http.get(uri, headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
