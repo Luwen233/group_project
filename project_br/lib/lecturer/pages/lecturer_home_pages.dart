@@ -207,7 +207,6 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
             )
           : CustomScrollView(
               slivers: [
-                // --- 👇 THIS IS THE CORRECTED SliverAppBar ---
                 SliverAppBar(
                   backgroundColor: const Color(0xFF3C9CBF),
                   expandedHeight: 150,
@@ -298,7 +297,7 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
                           crossAxisCount: 2,
                           crossAxisSpacing: 14,
                           mainAxisSpacing: 18,
-                          childAspectRatio: 3 / 5.3,
+                          childAspectRatio: 3 / 5.0,
                         ),
                     itemBuilder: (_, i) {
                       final list = _search(_rooms);
@@ -352,7 +351,7 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
                             Padding(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
-                                vertical: 10,
+                                vertical: 12,
                               ),
                               child: Row(
                                 mainAxisAlignment:
@@ -429,10 +428,15 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
                                           .contains(slot.id);
                                       final bool isPast =
                                           nowDouble >= _t2d(slot.endTime);
+                                      final bool isDisabled =
+                                          displayStatus == 'disabled';
                                       final Color barColor;
                                       final Color textColor;
 
-                                      if (isBooked) {
+                                      if (isDisabled) {
+                                        barColor = Colors.grey[500]!;
+                                        textColor = Colors.grey[700]!;
+                                      } else if (isBooked) {
                                         barColor = const Color(
                                           0xffDB5151,
                                         ); // Booked
@@ -442,10 +446,11 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
                                             Colors.grey[350]!; // time past
                                         textColor = Colors.grey[700]!;
                                       } else {
-                                        barColor =
-                                            Colors.lightBlue; // Available
+                                        // Available
+                                        barColor = const Color(0xff3BCB53);
                                         textColor = Colors.white;
                                       }
+
                                       return Expanded(
                                         child: Column(
                                           children: [

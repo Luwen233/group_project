@@ -311,7 +311,7 @@ class _StudentHomePagesState extends State<StudentHomePages> {
                           crossAxisCount: 2,
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 16,
-                          childAspectRatio: 3 / 5.3,
+                          childAspectRatio: 3 / 5.0,
                         ),
                     itemBuilder: (context, index) {
                       final room = _filteredRooms()[index];
@@ -330,10 +330,13 @@ class _StudentHomePagesState extends State<StudentHomePages> {
                         if (_myBookingStatus == 'pending') {
                           displayStatus = 'Pending';
                           displayColor = Colors.yellow[700]!;
-                        } else {
+                        } else if (_myBookingStatus == 'approved') {
                           // 'approved'
                           displayStatus = 'Reserved';
                           displayColor = const Color(0xff3BCB53);
+                        } else {
+                          displayStatus = 'Rejected';
+                          displayColor = const Color(0xffDB5151);
                         }
                         canTap = false;
                       } else {
@@ -434,7 +437,7 @@ class _StudentHomePagesState extends State<StudentHomePages> {
                               Padding(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 12,
-                                  vertical: 10,
+                                  vertical: 12,
                                 ),
                                 child: Row(
                                   mainAxisAlignment:
@@ -496,7 +499,6 @@ class _StudentHomePagesState extends State<StudentHomePages> {
                                             fontWeight: FontWeight.w600,
                                             color: Colors.grey[700],
                                           ),
-                                          
                                         ),
                                       ],
                                     ),
@@ -513,11 +515,16 @@ class _StudentHomePagesState extends State<StudentHomePages> {
                                               .contains(slot.id);
                                           final bool isPast =
                                               nowDouble >= _t2d(slot.endTime);
+                                          final bool isDisabled =
+                                              displayStatus == 'disabled';
                                           final Color barColor;
                                           final Color textColor;
 
-                                          if (isBooked) {
-                                            barColor = Color(
+                                          if (isDisabled) {
+                                            barColor = Colors.grey[500]!;
+                                            textColor = Colors.grey[700]!;
+                                          } else if (isBooked) {
+                                            barColor = const Color(
                                               0xffDB5151,
                                             ); // Booked
                                             textColor = Colors.white;
@@ -526,9 +533,8 @@ class _StudentHomePagesState extends State<StudentHomePages> {
                                                 Colors.grey[350]!; // time past
                                             textColor = Colors.grey[700]!;
                                           } else {
-                                            barColor = const Color(
-                                              0xff3BCB53,
-                                            ); // Available
+                                            // Available
+                                            barColor = const Color(0xff3BCB53);
                                             textColor = Colors.white;
                                           }
                                           //container ships time slots
