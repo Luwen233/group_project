@@ -80,21 +80,13 @@ class _HomePageState extends State<HomePage> {
     try {
       final res = await http.get(url);
       final data = jsonDecode(res.body);
-
       if (!mounted) return;
-
-      int f = data['freeRooms'] ?? 0;
-      int r = data['reservedBookings'] ?? 0;
-      int p = data['pendingBookings'] ?? 0;
-      int d = data['disabledRooms'] ?? 0;
-
-      int total = f + r + p + d;
       setState(() {
-        totalSlots = total;
-        freeRooms = f;
-        reservedRooms = r;
-        pendingRequests = p;
-        disabledRooms = d;
+        totalSlots = data['totalSlots'] ?? 0;
+        freeRooms = data['freeRooms'] ?? 0;
+        reservedRooms = data['reservedBookings'] ?? 0;
+        pendingRequests = data['pendingBookings'] ?? 0;
+        disabledRooms = data['disabledRooms'] ?? 0;
       });
     } catch (e) {
       throw Exception('Failed to load summary');
