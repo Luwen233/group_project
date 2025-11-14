@@ -4,6 +4,8 @@ const bcrypt = require('bcrypt');
 const con = require('./db'); // Database connection
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
+const multer = require('multer');
+const path = require('path');
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -39,6 +41,30 @@ function verifyUser(req, res, next) {
     }
   });
 }
+
+
+//############# Upload Images ######################
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cd(null, path.join(__dirname, "public/img"));
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + "_" + file.originalname);
+  }
+});
+
+const Upload = multer({
+  storage, fileFilter: function (req, file, cb) {
+    const allowedTypes = ['image/jpg', 'image/png', 'image/jpeg'];
+    if (!allowedTypes.includes(file.mimetype)) {
+      return cb(new Error('Only .png, .jpg, .jpeg allowed'));
+    }
+    cb(null, true);
+  },
+  limits: { fileSize: 10 * 1024 * 1024 } // Max 10MB
+});
+
 
 // Login route
 app.post('/auth/login', (req, res) => {
@@ -462,7 +488,7 @@ app.get('/dashboard/summary', (req, res) => {
         (SELECT COUNT(*) FROM rooms WHERE room_status = 'free') AS freeRooms,
         (SELECT COUNT(*) FROM rooms WHERE room_status = 'disabled') AS disabledRooms,
         (SELECT COUNT(*) FROM bookings WHERE LOWER(booking_status) = 'pending') AS pendingBookings,
-        (SELECT COUNT(*) FROM bookings WHERE LOWER(booking_status) = 'approved') AS reservedBookings`,
+        (SELECT COUNT(*) FROM bookings WHERE LOWER(booking_status) = 'approved'AND booking_date = CURDATE()) AS reservedBookings`,
     (err, result) => {
       if (err) return res.status(500).json({ error: 'Database error' });
       res.json(result[0]);
