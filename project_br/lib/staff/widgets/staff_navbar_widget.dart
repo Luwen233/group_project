@@ -15,7 +15,7 @@ class StaffNavbarWidget extends StatelessWidget {
           destinations: const [
             NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
             NavigationDestination(
-              icon: Icon(Icons.event_note_outlined),
+              icon: Icon(Icons.add_home),
               label: 'Add rooms',
             ),
             NavigationDestination(
