@@ -70,9 +70,26 @@ class _StudentBookingPagesState extends State<StudentBookingPages> {
 
   Future<void> _cancelBooking(int bookingId) async {
     try {
-      final response = await http.patch(
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? '';
+
+      if (token.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Session expired, please login again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      final response = await http.put(
         Uri.parse('${ApiConfig.baseUrl}/bookings/$bookingId/cancel'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token', 
+        },
       );
+
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -82,7 +99,14 @@ class _StudentBookingPagesState extends State<StudentBookingPages> {
         );
         _fetchBookings();
       } else {
-        throw Exception("Failed to cancel (${response.statusCode})");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed to cancel (${response.statusCode}): ${response.body}',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } catch (e) {
       ScaffoldMessenger.of(
@@ -118,7 +142,6 @@ class _StudentBookingPagesState extends State<StudentBookingPages> {
     );
   }
 
-  // ⭐️ 6. เพิ่มฟังก์ชันจัดการรูปภาพ
   Widget _buildSafeImage(
     dynamic imageValue, {
     required double width,

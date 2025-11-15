@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:project_br/api_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class EditRoomPage extends StatefulWidget {
   final Map<String, dynamic> rooms;
@@ -15,18 +16,21 @@ class EditRoomPage extends StatefulWidget {
 class _EditRoomPageState extends State<EditRoomPage> {
   late TextEditingController _nameController;
   late TextEditingController _descController;
-  late TextEditingController _capacityController; 
+  late TextEditingController _capacityController;
   late bool _isFree;
 
   bool _isSubmitting = false;
 
+  File? _imageFile;
+  final ImagePicker _picker = ImagePicker();
+  String? _currentImageName;
+
   @override
   void initState() {
     super.initState();
+
     _nameController = TextEditingController(text: widget.rooms['name']);
-    _descController = TextEditingController(
-      text: widget.rooms['description'],
-    );
+    _descController = TextEditingController(text: widget.rooms['description']);
     _capacityController = TextEditingController(
       text: (widget.rooms['capacity']?.toString() ?? '0').replaceAll(
         'N/A',
@@ -34,6 +38,11 @@ class _EditRoomPageState extends State<EditRoomPage> {
       ),
     );
     _isFree = (widget.rooms['status'] ?? 'Free').toLowerCase() == 'free';
+
+    _currentImageName = (widget.rooms['image'] ?? '').toString();
+    if (_currentImageName == null || _currentImageName!.isEmpty) {
+      _currentImageName = 'placeholder.png';
+    }
   }
 
   @override
@@ -44,6 +53,18 @@ class _EditRoomPageState extends State<EditRoomPage> {
     super.dispose();
   }
 
+  Future<void> _pickImage() async {
+    final XFile? pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = File(pickedFile.path);
+      });
+    }
+  }
+
   Future<void> _updateRoom() async {
     setState(() => _isSubmitting = true);
 
@@ -52,24 +73,26 @@ class _EditRoomPageState extends State<EditRoomPage> {
       final token = prefs.getString('token') ?? '';
       final roomId = widget.rooms['id'];
 
-      final url = Uri.parse('${ApiConfig.baseUrl}/rooms/$roomId');
+      final uri = Uri.parse('${ApiConfig.baseUrl}/rooms/$roomId');
 
-      // 👈 4. UPDATED BODY
-      final body = jsonEncode({
-        'room_name': _nameController.text,
-        'room_description': _descController.text,
-        'room_status': _isFree ? 'free' : 'disabled',
-        'capacity': int.tryParse(_capacityController.text) ?? 0,
-      });
+      final request = http.MultipartRequest('PUT', uri);
 
-      final response = await http.patch(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: body,
-      );
+      request.headers['Authorization'] = 'Bearer $token';
+
+      request.fields['room_name'] = _nameController.text;
+      request.fields['room_description'] = _descController.text;
+      request.fields['room_status'] = _isFree ? 'free' : 'disabled';
+      request.fields['capacity'] = (int.tryParse(_capacityController.text) ?? 0)
+          .toString();
+
+      if (_imageFile != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath('image', _imageFile!.path),
+        );
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
 
       if (!mounted) return;
 
@@ -95,29 +118,66 @@ class _EditRoomPageState extends State<EditRoomPage> {
 
   @override
   Widget build(BuildContext context) {
-    final String imagePath = widget.rooms['image']?.isNotEmpty ?? false
-        ? 'assets/images/${widget.rooms['image']}'
-        : 'assets/images/placeholder.png';
+    Widget imageWidget;
+    if (_imageFile != null) {
+      imageWidget = Image.file(
+        _imageFile!,
+        fit: BoxFit.cover,
+        width: double.infinity,
+      );
+    } else {
+      final String imagePath =
+          'assets/images/${_currentImageName ?? 'placeholder.png'}';
+      imageWidget = Image.asset(
+        imagePath,
+        fit: BoxFit.cover,
+        width: double.infinity,
+      );
+    }
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Edit Room")),
+      appBar: AppBar(
+        title: const Text(
+          "Edit Room",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView(
           children: [
-            Container(
-              height: 160,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(12),
-                image: DecorationImage(
-                  image: AssetImage(imagePath),
-                  fit: BoxFit.cover,
-                ),
+            GestureDetector(
+              onTap: _pickImage,
+              child: Stack(
+                children: [
+                  Container(
+                    height: 330,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: imageWidget,
+                  ),
+                  Positioned(
+                    right: 12,
+                    bottom: 12,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      padding: const EdgeInsets.all(8),
+                      child: const Icon(
+                        Icons.add_photo_alternate_outlined,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),
-
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -167,16 +227,19 @@ class _EditRoomPageState extends State<EditRoomPage> {
               ],
             ),
             const SizedBox(height: 16),
+
+            // Capacity
             TextField(
               controller: _capacityController,
               decoration: const InputDecoration(
                 labelText: "Capacity",
                 border: OutlineInputBorder(),
               ),
-              keyboardType: TextInputType.number, // Shows number keyboard
+              keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 16),
 
+            // Description
             TextField(
               controller: _descController,
               maxLines: 4,
@@ -187,6 +250,7 @@ class _EditRoomPageState extends State<EditRoomPage> {
             ),
             const SizedBox(height: 24),
 
+            // Confirm button
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
