@@ -30,7 +30,18 @@ class _LecturerRequestPagesState extends State<LecturerRequestPages> {
 
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}/bookings/requests');
-      final res = await http.get(uri).timeout(const Duration(seconds: 10));
+
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? '';
+      final res = await http
+          .get(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (res.statusCode == 200) {
         final List data = jsonDecode(res.body);
@@ -64,7 +75,7 @@ class _LecturerRequestPagesState extends State<LecturerRequestPages> {
     final token = prefs.getString('token') ?? '';
 
     try {
-      final res = await http.patch(
+      final res = await http.put(
         url,
         headers: {
           'Content-Type': 'application/json',
@@ -76,7 +87,7 @@ class _LecturerRequestPagesState extends State<LecturerRequestPages> {
         await _loadRequests(); // Refresh the list
       }
     } catch (e) {
-      print('🔥 approveRequest() error: $e');
+       throw Exception('Failed to load');
     }
   }
 
@@ -86,7 +97,7 @@ class _LecturerRequestPagesState extends State<LecturerRequestPages> {
     final token = prefs.getString('token') ?? '';
 
     try {
-      final res = await http.patch(
+      final res = await http.put(
         url,
         headers: {
           'Content-Type': 'application/json',
@@ -99,7 +110,7 @@ class _LecturerRequestPagesState extends State<LecturerRequestPages> {
         await _loadRequests(); // Refresh the list
       }
     } catch (e) {
-      print('🔥 rejectRequest() error: $e');
+       throw Exception('Failed to load');
     }
   }
 
