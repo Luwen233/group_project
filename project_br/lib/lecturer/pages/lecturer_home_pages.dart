@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:project_br/api_config.dart';
+import 'package:project_br/notifiers.dart';
 
 class TimeSlot {
   final int id;
@@ -90,8 +91,16 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
   Future<void> _loadSummary() async {
     final url = Uri.parse('${ApiConfig.baseUrl}/dashboard/summary');
 
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token') ?? '';
     try {
-      final res = await http.get(url);
+      final res = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
       final data = jsonDecode(res.body);
       if (!mounted) return;
       setState(() {
@@ -157,6 +166,7 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
   @override
   Widget build(BuildContext context) {
     final dateText = DateFormat('MMM d, y').format(DateTime.now());
+    final currentUserRole = UserRole.lecturer;
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -280,6 +290,7 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
                     ),
                   ),
                 ),
+
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.all(12),
@@ -289,6 +300,7 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
                       reservedSlots: reservedRooms,
                       pendingSlots: pendingRequests,
                       disabledRooms: disabledRooms,
+                      userRole: currentUserRole,
                     ),
                   ),
                 ),
@@ -434,7 +446,8 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
                                       final bool isPast =
                                           nowDouble >= _t2d(slot.endTime);
                                       final bool isDisabled =
-                                          displayStatus == 'disabled';
+                                          displayStatus.toLowerCase() ==
+                                          'disable';
                                       final Color barColor;
                                       final Color textColor;
 
