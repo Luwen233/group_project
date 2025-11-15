@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:project_br/api_config.dart';
 import 'package:http/http.dart' as http;
@@ -124,6 +125,22 @@ class _LecturerHistoryPagesState extends State<LecturerHistoryPages>
         return '03.00 - 05.00 PM';
       default:
         return 'Unknown Time';
+    }
+  }
+
+  String _formatIsoTo12HourTime(dynamic rawDate) {
+    if (rawDate == null || rawDate.toString().isEmpty) {
+      return '-';
+    }
+
+    try {
+      final DateTime parsedDate = DateTime.parse(rawDate.toString());
+      
+      return DateFormat('hh:mm a').format(parsedDate);
+
+    } catch (e) {
+      print('Error parsing date: $e');
+      return '-';
     }
   }
 

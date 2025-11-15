@@ -32,6 +32,22 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
     }
   }
 
+  String _formatIsoTo12HourTime(dynamic rawDate) {
+    if (rawDate == null || rawDate.toString().isEmpty) {
+      return '-';
+    }
+
+    try {
+      final DateTime parsedDate = DateTime.parse(rawDate.toString());
+      
+      return DateFormat('hh:mm a').format(parsedDate);
+
+    } catch (e) {
+      print('Error parsing date: $e');
+      return '-';
+    }
+  }
+
   bool _isHistoryItem(Map<String, dynamic> booking) {
     final String status = booking['status'] ?? '';
     final String bookingDateStr = booking['date'] ?? '';
@@ -63,11 +79,9 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
 
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getInt('user_id');
-      final token = prefs.getString('token') ?? '';
-
-      if (userId == null || token.isEmpty) {
-        throw Exception("User not logged in. Please log in again.");
       }
+      final uri = Uri.parse('${ApiConfig.baseUrl}/bookings/user');
+
 
       final uri = Uri.parse('${ApiConfig.baseUrl}/bookings/user/$userId');
 
@@ -80,7 +94,11 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
             },
           )
           .timeout(const Duration(seconds: 10));
+      final headers = {
+        'Authorization': 'Bearer $token',
+      };
 
+      final res = await http.get(uri,headers: headers).timeout(const Duration(seconds: 10));
       if (res.statusCode == 200) {
         final List data = jsonDecode(res.body);
         setState(() {
@@ -102,7 +120,8 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
               'reason': b['reason'] ?? '',
               'approver': b['approver_name'] ?? '-',
               'lecturerNote': b['lecturer_note'] ?? '',
-              'actionDate': b['action_date'] ?? '',
+              'actionDate': b['action_date'] ?? '-',
+              'actionTime': _formatIsoTo12HourTime(b['action_date']),
               'image': b['image'],
               'name': b['booked_by_name'] ?? 'Unknown',
             };
@@ -247,7 +266,6 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
 
                 // DETAILS
                 _buildDetailItem('Approved By', booking['approver']),
-                _buildDetailItem(statusActionText, booking['actionDate']),
                 if (booking['reason'] != null && booking['reason'] != '')
                   _buildDetailItem('Booking Reason', booking['reason']),
 

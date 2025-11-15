@@ -465,7 +465,13 @@ app.get('/bookings/requests', verifyAccess(['Lecturer']), (req, res) => {
             CONVERT_TZ(b.booking_date, '+00:00', '+07:00') AS booking_date, 
             r.room_name, r.image AS room_image, 
             u.username AS user_name, 
-            t.slot_name, t.start_time, t.end_time 
+            t.slot_name, t.start_time, t.end_time,
+            b.booking_status AS status,
+            b.slot_id,
+            b.booking_reason AS reason,
+            COALESCE(b.approved_on, b.rejected_on) AS action_date
+
+
      FROM bookings b 
      JOIN rooms r ON b.room_id = r.room_id 
      JOIN users u ON b.user_id = u.user_id 
