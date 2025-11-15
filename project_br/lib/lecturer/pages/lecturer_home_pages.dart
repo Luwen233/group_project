@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:project_br/api_config.dart';
+import 'package:project_br/notifiers.dart';
 
 class TimeSlot {
   final int id;
@@ -33,6 +34,7 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
   bool _isWaiting = true;
   String? _error;
 
+  int totalSlots = 0;
   int freeRooms = 0;
   int reservedRooms = 0;
   int pendingRequests = 0;
@@ -89,12 +91,20 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
   Future<void> _loadSummary() async {
     final url = Uri.parse('${ApiConfig.baseUrl}/dashboard/summary');
 
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token') ?? '';
     try {
-      final res = await http.get(url);
+      final res = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
       final data = jsonDecode(res.body);
-
       if (!mounted) return;
       setState(() {
+        totalSlots = data['totalSlots'] ?? 0;
         freeRooms = data['freeRooms'] ?? 0;
         reservedRooms = data['reservedBookings'] ?? 0;
         pendingRequests = data['pendingBookings'] ?? 0;
@@ -156,6 +166,7 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
   @override
   Widget build(BuildContext context) {
     final dateText = DateFormat('MMM d, y').format(DateTime.now());
+    final currentUserRole = UserRole.lecturer;
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -165,10 +176,13 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
           children: [
             UserAccountsDrawerHeader(
               decoration: const BoxDecoration(color: Color(0xFF3C9CBF)),
-              accountName: Text(userName ?? "Loading..."),
+              accountName: Text(
+                userName ?? 'Lecturer',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
               accountEmail: null,
               currentAccountPicture: const CircleAvatar(
-                child: Icon(Icons.person, color: Colors.black),
+                child: Icon(Icons.person, color: Colors.black, size: 40),
               ),
             ),
             ListTile(
@@ -276,14 +290,17 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
                     ),
                   ),
                 ),
+
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.all(12),
                     child: DashboardSummary(
                       freeSlots: freeRooms,
+                      totalSlots: totalSlots,
                       reservedSlots: reservedRooms,
                       pendingSlots: pendingRequests,
                       disabledRooms: disabledRooms,
+                      userRole: currentUserRole,
                     ),
                   ),
                 ),
@@ -429,7 +446,8 @@ class _LecturerHomePagesState extends State<LecturerHomePages> {
                                       final bool isPast =
                                           nowDouble >= _t2d(slot.endTime);
                                       final bool isDisabled =
-                                          displayStatus == 'disabled';
+                                          displayStatus.toLowerCase() ==
+                                          'disable';
                                       final Color barColor;
                                       final Color textColor;
 

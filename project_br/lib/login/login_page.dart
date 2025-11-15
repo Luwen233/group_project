@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:project_br/api_config.dart';
+import 'package:project_br/staff/widgets/staff_tree_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:project_br/login/signup_page.dart';
-import 'package:project_br/staff/widgets/staff_widget_tree.dart';
 import 'package:project_br/student/widget/student_tree_widget.dart';
 import 'package:project_br/lecturer/widget/lecturer_tree_widget.dart';
 
@@ -57,7 +57,7 @@ class _LoginPageState extends State<LoginPage> {
         if (data['role'] == 'Staff') {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const RoomApp()),
+            MaterialPageRoute(builder: (_) => const StaffWidgetTree()),
           );
         } else if (data['role'] == 'Lecturer') {
           Navigator.pushReplacement(
@@ -67,7 +67,7 @@ class _LoginPageState extends State<LoginPage> {
         } else {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const WidgetTree()),
+            MaterialPageRoute(builder: (_) => const StudentWidgetTree()),
           );
         }
       } else {

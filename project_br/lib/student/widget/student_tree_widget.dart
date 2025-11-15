@@ -6,8 +6,8 @@ import 'package:project_br/student/pages/student_home_page.dart';
 import 'package:project_br/student/widget/student_navbar_widget.dart';
 
 
-class WidgetTree extends StatelessWidget {
-  const WidgetTree({super.key});
+class StudentWidgetTree extends StatelessWidget {
+  const StudentWidgetTree({super.key});
 
   @override
   Widget build(BuildContext context) {

@@ -114,9 +114,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     setState(() => _submitting = true);
 
     try {
-      final url = Uri.parse(
-        '${ApiConfig.baseUrl}/bookings',
-      ); // CHANGE Ips
+      final url = Uri.parse('${ApiConfig.baseUrl}/bookings'); // CHANGE Ips
       final res = await http.post(
         url,
         headers: {
@@ -143,11 +141,12 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             icon: const Icon(
               Icons.check_circle_outline_rounded,
               color: Color(0xff3BCB53),
-              size: 100,
+              size: 90,
             ),
             title: const Text('Booking Request Sent!'),
             content: Text(
               'Booking ID: ${data['booking_id']}\nCheck it in My Requests.',
+              textAlign: TextAlign.center,
             ),
             actions: [
               TextButton(
