@@ -7,6 +7,7 @@ class DashboardSummary extends StatelessWidget {
   final int reservedSlots;
   final int pendingSlots;
   final int disabledRooms;
+  final UserRole userRole;
 
   const DashboardSummary({
     super.key,
@@ -15,6 +16,7 @@ class DashboardSummary extends StatelessWidget {
     required this.reservedSlots,
     required this.pendingSlots,
     required this.disabledRooms,
+    required this.userRole,
   });
 
   @override
@@ -65,9 +67,11 @@ class DashboardSummary extends StatelessWidget {
               Colors.amber,
               pendingSlots,
               "Pending Slots",
-              () {
-                selectedPageNotifer.value = 1;
-              },
+              userRole == UserRole.lecturer
+                  ? () {
+                      selectedPageNotifer.value = 1;
+                    }
+                  : null,
             ),
           ),
           const SizedBox(width: 8),
