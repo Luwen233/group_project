@@ -1,9 +1,9 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:project_br/api_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class StudentHistoryPages extends StatefulWidget {
   const StudentHistoryPages({super.key});
@@ -63,13 +63,23 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
 
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getInt('user_id');
+      final token = prefs.getString('token') ?? '';
 
-      if (userId == null) {
-        throw Exception("User ID not found. Please log in again.");
+      if (userId == null || token.isEmpty) {
+        throw Exception("User not logged in. Please log in again.");
       }
 
       final uri = Uri.parse('${ApiConfig.baseUrl}/bookings/user/$userId');
-      final res = await http.get(uri).timeout(const Duration(seconds: 10));
+
+      final res = await http
+          .get(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (res.statusCode == 200) {
         final List data = jsonDecode(res.body);
@@ -83,11 +93,9 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
             return {
               'id': b['id'].toString(),
               'roomName': b['room_name'] ?? 'Unknown Room',
-              'date': dateFromServer.split('T')[0], // 👈 FIX 1
+              'date': dateFromServer.split('T')[0],
               'time': _mapSlotIdToTime(b['slot_id'] as int?),
-              'status':
-                  statusFromServer
-                      .isNotEmpty // 👈 FIX 2
+              'status': statusFromServer.isNotEmpty
                   ? statusFromServer[0].toUpperCase() +
                         statusFromServer.substring(1)
                   : 'Unknown',
@@ -101,7 +109,9 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
           }).toList();
         });
       } else {
-        setState(() => _error = 'Server error ${res.statusCode}');
+        setState(() {
+          _error = 'Server error ${res.statusCode}: ${res.body}';
+        });
       }
     } catch (e) {
       setState(() => _error = e.toString());
@@ -158,50 +168,101 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Request ID: ${booking['id']}',
-                  style: TextStyle(color: Colors.grey[600]),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Request ID: ${booking['id']}',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            booking['roomName'],
+                            style: const TextStyle(
+                              fontSize: 25,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: statusColor,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            status,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 6),
+
+                        Text(
+                          'Date: ${booking['date']}',
+                          style: const TextStyle(fontSize: 17),
+                        ),
+                        Text(
+                          'Time: ${booking['time']}',
+                          style: const TextStyle(fontSize: 17),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 10),
-                Text(
-                  booking['roomName'],
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text('Date: ${booking['date']}'),
-                Text('Time: ${booking['time']}'),
-                const SizedBox(height: 15),
+
+                // IMAGE
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(4),
                   child: SizedBox(
                     height: 160,
                     width: double.infinity,
                     child: _buildSafeImage(booking['image']),
                   ),
                 ),
+
                 const SizedBox(height: 20),
-                _buildDetailItem('Booked By', booking['name']),
+
+                // DETAILS
                 _buildDetailItem('Approved By', booking['approver']),
                 _buildDetailItem(statusActionText, booking['actionDate']),
-                const SizedBox(height: 15),
                 if (booking['reason'] != null && booking['reason'] != '')
-                  _buildDetailItem('Reason', booking['reason']),
+                  _buildDetailItem('Booking Reason', booking['reason']),
+
                 if (status == 'Rejected' && booking['lecturerNote'] != null)
                   _buildDetailItem('Lecturer Note', booking['lecturerNote']),
-                const SizedBox(height: 15),
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xff3BCB53),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text(
+                      'OK',
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                  ),
-                  child: const Center(
-                    child: Text('OK', style: TextStyle(color: Colors.white)),
                   ),
                 ),
               ],
@@ -218,14 +279,14 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+          Text(label, style: TextStyle(color: Colors.grey[700], fontSize: 14)),
           Flexible(
             child: Text(
               value,
               textAlign: TextAlign.end,
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 13,
+                fontSize: 15,
                 color: Colors.black,
               ),
             ),
@@ -330,48 +391,30 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
 
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 20),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: Column(
+      child: Stack(
         children: [
-          ListTile(
-            title: Text(booking['roomName']),
-            subtitle: Text('${booking['date']} | ${booking['time']}'),
-          ),
-          SizedBox(
-            height: 120,
-            width: double.infinity,
-            child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                bottom: Radius.circular(10),
+          Column(
+            children: [
+              ListTile(
+                title: Text(booking['roomName']),
+                subtitle: Text('${booking['date']} | ${booking['time']}'),
               ),
-              child: _buildSafeImage(booking['image']),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      color: statusColor,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Center(
-                      child: Text(
-                        status,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
+              SizedBox(
+                height: 120,
+                width: double.infinity,
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    bottom: Radius.circular(4),
                   ),
+                  child: _buildSafeImage(booking['image']),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
+              ),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: SizedBox(
+                  width: double.infinity,
                   child: OutlinedButton(
                     onPressed: () => _showMoreDetailsSheet(context, booking),
                     child: const Text(
@@ -380,7 +423,28 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
                     ),
                   ),
                 ),
-              ],
+              ),
+            ],
+          ),
+
+          //Status chips
+          Positioned(
+            top: 19,
+            right: 15,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: statusColor,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                status,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
             ),
           ),
         ],

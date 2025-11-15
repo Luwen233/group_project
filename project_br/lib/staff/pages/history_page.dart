@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:intl/intl.dart'; // Import for date formatting
+import 'package:project_br/api_config.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -7,242 +12,255 @@ class HistoryPage extends StatefulWidget {
   State<HistoryPage> createState() => _HistoryPageState();
 }
 
-class _HistoryPageState extends State<HistoryPage> {
-  // Mock data
-  final List<Map<String, dynamic>> histories = [];
+// ✅ 1. Added TickerProviderStateMixin
+class _HistoryPageState extends State<HistoryPage>
+    with TickerProviderStateMixin {
+  // --- STATE VARIABLES ---
+  late TabController _tabController; // ✅ 2. Added TabController
+  List<Map<String, dynamic>> _allBookings = [];
+  bool _isLoading = true;
+  String? _error;
 
-  // Filter list by status
-  List<Map<String, dynamic>> _getFilteredBookings(String status) {
-    if (status == 'All') return histories;
-    return histories.where((b) => b['status'] == status).toList();
+  @override
+  void initState() {
+    super.initState();
+    _loadBookings(); // Renamed from _loadHistory
+
+    // ✅ 3. Initialized TabController
+    _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging == false) {
+        setState(() {}); // Refresh page on tab change
+      }
+    });
   }
 
-  // Show bottom sheet
-  void _showMoreDetailsSheet(
-    BuildContext context,
-    Map<String, dynamic> booking,
-  ) {
-    final String status = booking['status'] ?? 'Rejected';
-    Color statusColor;
-    String statusActionText;
+  @override
+  void dispose() {
+    _tabController.dispose(); // ✅ 4. Dispose TabController
+    super.dispose();
+  }
 
-    switch (status) {
-      case 'Approved':
-        statusColor = const Color(0xff3BCB53);
-        statusActionText = 'Approved On';
-        break;
-      case 'Rejected':
-      default:
-        statusColor = const Color(0xffDB5151);
-        statusActionText = 'Rejected On';
+  // --- ✅ 5. Merged data loading AND mapping logic ---
+  Future<void> _loadBookings() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? '';
+      final userId = prefs.getInt('user_id') ?? 0;
+
+      final url = Uri.parse('${ApiConfig.baseUrl}/bookings/user/$userId');
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200) {
+        final List data = jsonDecode(response.body);
+
+        setState(() {
+          _allBookings = data
+              .map<Map<String, dynamic>?>((b) {
+                // Map the data from server keys (e.g., room_name)
+                // to UI-friendly keys (e.g., roomName)
+                final status = (b['status'] ?? 'unknown')
+                    .toString()
+                    .toLowerCase();
+
+                // Filter out "cancelled" from the start
+                if (status == 'cancelled') {
+                  return null;
+                }
+
+                return {
+                  'id': b['id'].toString(),
+                  'roomName': b['room_name'] ?? 'Unknown Room',
+                  'date': (b['booking_date'] ?? '').toString().split('T')[0],
+                  'time': _mapSlotIdToTime(b['slot_id']), // Use new time mapper
+                  'status': status[0].toUpperCase() + status.substring(1),
+                  'reason': b['reason'] ?? 'No reason provided.',
+                  'approver': b['approver_name'] ?? 'N/A',
+                  'lecturerNote': b['reject_reason'] ?? 'No note.',
+                  'actionDate': _formatActionDate(b['action_date']),
+                  'image': b['image'] ?? 'placeholder.png',
+                  'name': b['booked_by_name'] ?? 'Unknown',
+                };
+              })
+              .whereType<
+                Map<String, dynamic>
+              >() // Removes all null (cancelled) items
+              .toList();
+          _isLoading = false;
+        });
+      } else {
+        throw Exception('Server error: ${response.statusCode}');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString().replaceFirst("Exception: ", "");
+          _isLoading = false;
+        });
+      }
     }
+  }
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: SingleChildScrollView(
+  // --- ✅ 6. Copied helper functions from LecturerUI ---
+  String _mapSlotIdToTime(int? slotId) {
+    switch (slotId) {
+      case 1:
+        return '08.00 - 10.00 AM';
+      case 2:
+        return '10.00 - 12.00 AM';
+      case 3:
+        return '01.00 - 03.00 PM';
+      case 4:
+        return '03.00 - 05.00 PM';
+      default:
+        return 'Unknown Time';
+    }
+  }
+
+  String _formatActionDate(String? dateStr) {
+    if (dateStr == null) return 'N/A';
+    try {
+      final dt = DateTime.parse(dateStr).toLocal();
+      return DateFormat('MMM d, y @ h:mm a').format(dt);
+    } catch (e) {
+      return dateStr;
+    }
+  }
+
+  // Filters out "Pending" for the history view
+  List<Map<String, dynamic>> _getFilteredBookings(String status) {
+    final historyBookings = _allBookings
+        .where((b) => b['status'] != 'Pending')
+        .toList();
+
+    if (status == 'All') return historyBookings;
+    return historyBookings.where((b) => b['status'] == status).toList();
+  }
+
+  // --- ✅ 7. Replaced the entire build method with the LecturerUI one ---
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF7F7F7),
+        elevation: 3,
+        shadowColor: Colors.black54,
+        title: const Text(
+          'All History', // Title changed
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(67),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Request ID: ${booking['id']}',
-                style: TextStyle(color: Colors.grey[600], fontSize: 14),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                booking['roomName'] ?? 'Unknown Room',
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Date: ${booking['date']}'),
-                  Text('Time: ${booking['time']}'),
+              const Divider(thickness: 1, height: 0),
+              TabBar(
+                controller: _tabController,
+                labelColor: const Color(0xff3C9CBF),
+                unselectedLabelColor: const Color(0xff4E534E),
+                indicatorColor: const Color(0xff3C9CBF),
+                labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+                tabs: const [
+                  Tab(text: 'All'),
+                  Tab(text: 'Approved'),
+                  Tab(text: 'Rejected'),
                 ],
-              ),
-              const SizedBox(height: 20),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Image.asset(
-                  booking['image'],
-                  height: 150,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildDetailItem('Booked By', booking['name']),
-                      const SizedBox(height: 12),
-                      _buildDetailItem('Requested On', booking['date']),
-                    ],
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildDetailItem('Approved By', booking['approver']),
-                      const SizedBox(height: 12),
-                      _buildDetailItem(statusActionText, booking['actionDate']),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              _buildDetailItem('Reason Requested', booking['reason']),
-              if (status == 'Rejected') ...[
-                const SizedBox(height: 16),
-                _buildDetailItem('Lecturer Note', booking['lecturerNote']),
-              ],
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: statusColor,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text(
-                    'OK',
-                    style: TextStyle(color: Colors.white, fontSize: 18),
-                  ),
-                ),
               ),
             ],
           ),
         ),
       ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Error: $_error',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                    const SizedBox(height: 10),
+                    ElevatedButton(
+                      onPressed: _loadBookings,
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _buildHistoryList('All'),
+                _buildHistoryList('Approved'),
+                _buildHistoryList('Rejected'),
+              ],
+            ),
     );
   }
 
-  Widget _buildDetailItem(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-            color: Colors.black,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Build List for each tab
   Widget _buildHistoryList(String status) {
     final list = _getFilteredBookings(status);
-    if (list.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.history_toggle_off, size: 60, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              'No ${status.toLowerCase()} history yet.',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.black54,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+    if (list.isEmpty) return _buildEmptyState(status);
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       itemCount: list.length,
-      itemBuilder: (_, i) => _buildHistoryCard(list[i]),
+      itemBuilder: (context, index) => _buildHistoryCard(list[index]),
     );
   }
 
   Widget _buildHistoryCard(Map<String, dynamic> booking) {
-    final String status = booking['status'];
-    Color statusColor;
-    String statusActionText;
-
-    switch (status) {
-      case 'Approved':
-        statusColor = const Color(0xff3BCB53);
-        statusActionText = 'Approved On';
-        break;
-      case 'Rejected':
-      default:
-        statusColor = const Color(0xffDB5151);
-        statusActionText = 'Rejected On';
-    }
+    final status =
+        booking['status'] ?? 'Rejected'; // 'Cancelled' is already filtered
+    final statusColor = switch (status) {
+      'Approved' => const Color(0xff3BCB53),
+      'Rejected' => const Color(0xffDB5151),
+      _ => const Color(0xff4E534E), // Fallback
+    };
 
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      clipBehavior: Clip.antiAlias, // Helps ClipRRect work
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Request ID: ${booking['id']}',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                ),
-                Text(
-                  booking['date'],
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
+          ListTile(
+            title: Text(booking['roomName']),
+            subtitle: Text('${booking['date']} | ${booking['time']}'),
           ),
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-            child: Image.asset(
-              booking['image'],
-              height: 120,
-              width: double.infinity,
-              fit: BoxFit.cover,
-            ),
+          SizedBox(
+            height: 120,
+            width: double.infinity,
+            child: _buildSafeImage(booking['image']),
           ),
           Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildDetailItem('Booked By', booking['name']),
-                _buildDetailItem('Approved By', booking['approver']),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            padding: const EdgeInsets.all(12),
             child: Row(
               children: [
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
                     decoration: BoxDecoration(
                       color: statusColor,
                       borderRadius: BorderRadius.circular(8),
@@ -263,6 +281,7 @@ class _HistoryPageState extends State<HistoryPage> {
                   child: OutlinedButton(
                     onPressed: () => _showMoreDetailsSheet(context, booking),
                     style: OutlinedButton.styleFrom(
+                      // Match style
                       side: BorderSide(color: Colors.grey[400]!),
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       shape: RoundedRectangleBorder(
@@ -270,10 +289,10 @@ class _HistoryPageState extends State<HistoryPage> {
                       ),
                     ),
                     child: const Text(
-                      'More',
+                      'More Details',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Colors.black54,
+                        color: Colors.black54, // Match style
                       ),
                     ),
                   ),
@@ -286,34 +305,145 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text(
-            'All History',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
+  Widget _buildSafeImage(dynamic imageValue) {
+    final imageName = (imageValue as String?) ?? '';
+    final localAsset = imageName.isNotEmpty
+        ? 'assets/images/$imageName'
+        : 'assets/images/placeholder.png';
+
+    return Image.asset(
+      localAsset,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return Image.asset('assets/images/placeholder.png', fit: BoxFit.cover);
+      },
+    );
+  }
+
+  void _showMoreDetailsSheet(
+    BuildContext context,
+    Map<String, dynamic> booking,
+  ) {
+    final String status = booking['status'] ?? 'Rejected';
+    String statusActionText = switch (status) {
+      'Approved' => 'Approved On',
+      'Rejected' => 'Rejected On',
+      _ => 'Action On',
+    };
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Request ID: ${booking['id']}',
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  booking['roomName'],
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text('Date: ${booking['date']}'),
+                Text('Time: ${booking['time']}'),
+                const SizedBox(height: 15),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: SizedBox(
+                    height: 160,
+                    width: double.infinity,
+                    child: _buildSafeImage(booking['image']),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                _buildDetailItem('Booked By', booking['name']),
+                _buildDetailItem('Approved By', booking['approver']),
+                _buildDetailItem(statusActionText, booking['actionDate']),
+                const SizedBox(height: 15),
+                if (booking['reason'] != 'No reason provided.')
+                  _buildDetailItem('Requested Reason', booking['reason']),
+                if (status == 'Rejected' &&
+                    booking['lecturerNote'] != 'No note.')
+                  _buildDetailItem('Lecturer Note', booking['lecturerNote']),
+                const SizedBox(height: 15),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      side: BorderSide(color: Colors.grey[400]!),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'OK',
+                        style: TextStyle(color: Colors.black54, fontSize: 16),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          bottom: TabBar(
-            labelColor: const Color(0xff3C9CBF),
-            unselectedLabelColor: const Color(0xff4E534E),
-            indicatorColor: const Color(0xff3C9CBF),
-            tabs: const [
-              Tab(text: 'All'),
-              Tab(text: 'Approved'),
-              Tab(text: 'Rejected'),
-            ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailItem(String label, String value) {
+    // This is the detail item from LecturerUI
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: Colors.black,
+            ),
           ),
-        ),
-        body: TabBarView(
-          children: [
-            _buildHistoryList('All'),
-            _buildHistoryList('Approved'),
-            _buildHistoryList('Rejected'),
-          ],
-        ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String status) {
+    return Center(
+      child: Column(
+        // Added icon for consistency
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.history_toggle_off, size: 60, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          Text(
+            'No ${status.toLowerCase()} history yet.',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.black54,
+            ),
+          ),
+        ],
       ),
     );
   }
