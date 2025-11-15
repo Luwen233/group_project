@@ -14,7 +14,7 @@ class AddRoomPage extends StatefulWidget {
 }
 
 class _AddRoomPageState extends State<AddRoomPage> {
-  int quantity = 1;
+  int capacity = 1;
   final TextEditingController _typeController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
 
