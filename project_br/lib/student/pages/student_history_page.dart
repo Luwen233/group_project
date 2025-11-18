@@ -39,9 +39,8 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
 
     try {
       final DateTime parsedDate = DateTime.parse(rawDate.toString());
-      
-      return DateFormat('hh:mm a').format(parsedDate);
 
+      return DateFormat('hh:mm a').format(parsedDate);
     } catch (e) {
       print('Error parsing date: $e');
       return '-';
@@ -77,28 +76,21 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
         _error = null;
       });
 
-      final prefs = await SharedPreferences.getInstance();
+     final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getInt('user_id');
+      if (userId == null) {
+        throw Exception("User ID not found. Please log in again.");
       }
-      final uri = Uri.parse('${ApiConfig.baseUrl}/bookings/user');
 
-
+      final token = prefs.getString('token');
       final uri = Uri.parse('${ApiConfig.baseUrl}/bookings/user/$userId');
-
-      final res = await http
-          .get(
-            uri,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-          )
-          .timeout(const Duration(seconds: 10));
-      final headers = {
-        'Authorization': 'Bearer $token',
-      };
-
-      final res = await http.get(uri,headers: headers).timeout(const Duration(seconds: 10));
+      final res = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
       if (res.statusCode == 200) {
         final List data = jsonDecode(res.body);
         setState(() {
@@ -111,9 +103,11 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
             return {
               'id': b['id'].toString(),
               'roomName': b['room_name'] ?? 'Unknown Room',
-              'date': dateFromServer.split('T')[0],
+              'date': dateFromServer.split('T')[0], // 👈 FIX 1
               'time': _mapSlotIdToTime(b['slot_id'] as int?),
-              'status': statusFromServer.isNotEmpty
+              'status':
+                  statusFromServer
+                      .isNotEmpty // 👈 FIX 2
                   ? statusFromServer[0].toUpperCase() +
                         statusFromServer.substring(1)
                   : 'Unknown',
@@ -128,9 +122,7 @@ class _StudentHistoryPagesState extends State<StudentHistoryPages> {
           }).toList();
         });
       } else {
-        setState(() {
-          _error = 'Server error ${res.statusCode}: ${res.body}';
-        });
+        setState(() => _error = 'Server error ${res.statusCode}');
       }
     } catch (e) {
       setState(() => _error = e.toString());
