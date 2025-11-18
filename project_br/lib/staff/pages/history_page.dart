@@ -150,7 +150,6 @@ class _HistoryPageState extends State<HistoryPage>
     return historyBookings.where((b) => b['status'] == status).toList();
   }
 
-  // --- ✅ 7. Replaced the entire build method with the LecturerUI one ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -159,7 +158,7 @@ class _HistoryPageState extends State<HistoryPage>
         elevation: 3,
         shadowColor: Colors.black54,
         title: const Text(
-          'All History', // Title changed
+          'My History',
           style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
@@ -230,24 +229,43 @@ class _HistoryPageState extends State<HistoryPage>
   }
 
   Widget _buildHistoryCard(Map<String, dynamic> booking) {
-    final status =
-        booking['status'] ?? 'Rejected'; // 'Cancelled' is already filtered
+    final status = booking['status'] ?? 'Rejected';
     final statusColor = switch (status) {
       'Approved' => const Color(0xff3BCB53),
       'Rejected' => const Color(0xffDB5151),
-      _ => const Color(0xff4E534E), // Fallback
+      _ => const Color(0xff4E534E),
     };
+
+    Widget statusChip = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: statusColor,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        status,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+        ),
+      ),
+    );
 
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      clipBehavior: Clip.antiAlias, // Helps ClipRRect work
+      clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
           ListTile(
-            title: Text(booking['roomName']),
+            title: Text(
+              booking['roomName'],
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
+            ),
             subtitle: Text('${booking['date']} | ${booking['time']}'),
+            trailing: statusChip,
           ),
           SizedBox(
             height: 120,
@@ -255,49 +273,26 @@ class _HistoryPageState extends State<HistoryPage>
             child: _buildSafeImage(booking['image']),
           ),
           Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      color: statusColor,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Center(
-                      child: Text(
-                        status,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () => _showMoreDetailsSheet(context, booking),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  side: BorderSide(color: Colors.grey[400]!),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => _showMoreDetailsSheet(context, booking),
-                    style: OutlinedButton.styleFrom(
-                      // Match style
-                      side: BorderSide(color: Colors.grey[400]!),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text(
-                      'More Details',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black54, // Match style
-                      ),
-                    ),
+                child: const Text(
+                  'More Details',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black54,
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         ],
@@ -331,6 +326,28 @@ class _HistoryPageState extends State<HistoryPage>
       _ => 'Action On',
     };
 
+    final statusColor = switch (status) {
+      'Approved' => const Color(0xff3BCB53),
+      'Rejected' => const Color(0xffDB5151),
+      _ => const Color(0xff4E534E),
+    };
+
+    Widget statusChip = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: statusColor,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        status,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+        ),
+      ),
+    );
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -349,16 +366,37 @@ class _HistoryPageState extends State<HistoryPage>
                   style: TextStyle(color: Colors.grey[600]),
                 ),
                 const SizedBox(height: 10),
-                Text(
-                  booking['roomName'],
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        booking['roomName'],
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    statusChip,
+                  ],
                 ),
                 const SizedBox(height: 8),
-                Text('Date: ${booking['date']}'),
-                Text('Time: ${booking['time']}'),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Date: ${booking['date']}',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    Text(
+                      'Time: ${booking['time']}',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 15),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
@@ -372,13 +410,13 @@ class _HistoryPageState extends State<HistoryPage>
                 _buildDetailItem('Booked By', booking['name']),
                 _buildDetailItem('Approved By', booking['approver']),
                 _buildDetailItem(statusActionText, booking['actionDate']),
-                const SizedBox(height: 15),
+                const SizedBox(height: 12),
                 if (booking['reason'] != 'No reason provided.')
-                  _buildDetailItem('Requested Reason', booking['reason']),
+                  _buildDetailItem('Request Reason', booking['reason']),
                 if (status == 'Rejected' &&
                     booking['lecturerNote'] != 'No note.')
                   _buildDetailItem('Lecturer Note', booking['lecturerNote']),
-                const SizedBox(height: 15),
+                const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -407,20 +445,23 @@ class _HistoryPageState extends State<HistoryPage>
   }
 
   Widget _buildDetailItem(String label, String value) {
-    // This is the detail item from LecturerUI
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Column(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-              color: Colors.black,
+          Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                color: Colors.black,
+              ),
             ),
           ),
         ],
@@ -431,13 +472,12 @@ class _HistoryPageState extends State<HistoryPage>
   Widget _buildEmptyState(String status) {
     return Center(
       child: Column(
-        // Added icon for consistency
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.history_toggle_off, size: 60, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
-            'No ${status.toLowerCase()} history yet.',
+            'No ${status.toLowerCase()} bookings yet.',
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               color: Colors.black54,
