@@ -86,7 +86,7 @@ class _StudentBookingPagesState extends State<StudentBookingPages> {
         Uri.parse('${ApiConfig.baseUrl}/bookings/$bookingId/cancel'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token', 
+          'Authorization': 'Bearer $token',
         },
       );
 
@@ -209,7 +209,13 @@ class _StudentBookingPagesState extends State<StudentBookingPages> {
               padding: const EdgeInsets.all(20),
               child: _bookings.isEmpty
                   ? _buildEmptyState()
-                  : ListView(children: [_buildBookingCard(_bookings[0])]),
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(20),
+                      itemCount: _bookings.length,
+                      itemBuilder: (context, index) {
+                        return _buildBookingCard(_bookings[index]);
+                      },
+                    ),
             ),
     );
   }
