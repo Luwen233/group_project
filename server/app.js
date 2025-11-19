@@ -409,7 +409,7 @@ app.get('/bookings/user/:userId/today', (req, res) => {
     WHERE b.user_id = ? 
     AND b.booking_date = CURDATE() 
     AND (b.booking_status = 'pending' OR b.booking_status = 'approved' OR b.booking_status = 'rejected')
-    ORDER BY b.slot_id ASC
+    ORDER BY b.booking_id DESC
   `;
   con.query(sql, [userId], (err, result) => {
     if (err) {
@@ -519,8 +519,8 @@ app.get('/dashboard/summary', verifyAccess(['Lecturer', 'Staff']), (req, res) =>
   con.query(
     `SELECT
         (SELECT COUNT(*) FROM rooms) * (SELECT COUNT(*) FROM time_slots) AS totalSlots,
-        (SELECT COUNT(*) FROM rooms WHERE room_status = 'free') AS freeRooms,
-        (SELECT COUNT(*) FROM rooms WHERE room_status = 'disabled') AS disabledRooms,
+        (SELECT COUNT(*) FROM rooms) * (SELECT COUNT(*) FROM time_slots) - (SELECT COUNT(*) FROM rooms WHERE room_status = 'disabled') * (SELECT COUNT(*) FROM time_slots) - (SELECT COUNT(*) FROM bookings WHERE LOWER(booking_status) = 'pending') - (SELECT COUNT(*) FROM bookings WHERE LOWER(booking_status) = 'approved'AND booking_date = CURDATE()) AS freeRooms,
+        (SELECT COUNT(*) FROM rooms WHERE room_status = 'disabled') * (SELECT COUNT(*) FROM time_slots) AS disabledRooms,
         (SELECT COUNT(*) FROM bookings WHERE LOWER(booking_status) = 'pending') AS pendingBookings,
         (SELECT COUNT(*) FROM bookings WHERE LOWER(booking_status) = 'approved'AND booking_date = CURDATE()) AS reservedBookings`,
     (err, result) => {
