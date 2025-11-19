@@ -94,11 +94,16 @@ class _StudentHomePagesState extends State<StudentHomePages> {
           setState(() {
             if (data.isNotEmpty) {
               final myBooking = data[0];
-              _hasActiveBooking = true;
-              _myBookingRoomId = myBooking['room_id'] as int?;
-
               _myBookingStatus = (myBooking['status']?.toString() ?? 'pending')
                   .toLowerCase();
+              _myBookingRoomId = myBooking['room_id'] as int?;
+              bool isRejected = _myBookingStatus == 'rejected';
+
+              if (isRejected) {
+                _hasActiveBooking = false;
+              } else {
+                _hasActiveBooking = true;
+              }
             } else {
               _hasActiveBooking = false;
               _myBookingRoomId = null;
