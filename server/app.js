@@ -409,7 +409,7 @@ app.get('/bookings/user/:userId/today', (req, res) => {
     WHERE b.user_id = ? 
     AND b.booking_date = CURDATE() 
     AND (b.booking_status = 'pending' OR b.booking_status = 'approved' OR b.booking_status = 'rejected')
-    ORDER BY b.slot_id ASC
+    ORDER BY b.booking_id DESC
   `;
   con.query(sql, [userId], (err, result) => {
     if (err) {
