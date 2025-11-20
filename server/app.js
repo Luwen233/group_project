@@ -293,7 +293,8 @@ app.put(
       SELECT COUNT(*) AS active_bookings_count 
       FROM bookings 
       WHERE room_id = ? 
-      AND booking_status IN ('Pending', 'approved')
+      AND booking_status IN ('pending', 'approved')
+      AND booking_date = CURDATE()
     `;
 
     con.query(checkActiveBookingsSql, [roomId], (err, results) => {
