@@ -4,6 +4,7 @@ import 'package:project_br/api_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'dart:convert';
 
 class EditRoomPage extends StatefulWidget {
   final Map<String, dynamic> rooms;
@@ -37,6 +38,7 @@ class _EditRoomPageState extends State<EditRoomPage> {
         '0',
       ),
     );
+    // Ensure that if the room status is 'disabled' from the database, the switch reflects it.
     _isFree = (widget.rooms['status'] ?? 'Free').toLowerCase() == 'free';
 
     _currentImageName = (widget.rooms['image'] ?? '').toString();
@@ -65,6 +67,7 @@ class _EditRoomPageState extends State<EditRoomPage> {
     }
   }
 
+  // UPDATED: Logic to handle 403 Forbidden specifically
   Future<void> _updateRoom() async {
     setState(() => _isSubmitting = true);
 
@@ -99,9 +102,39 @@ class _EditRoomPageState extends State<EditRoomPage> {
       if (response.statusCode == 200) {
         Navigator.pop(context, true);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update: ${response.body}')),
-        );
+        String errorMessage =
+            'Failed to update. Status code: ${response.statusCode}';
+
+        // Handle specific 403 error message from the backend
+        if (response.statusCode == 403) {
+          try {
+            // Attempt to parse the JSON error body
+            final Map<String, dynamic> errorBody = jsonDecode(response.body);
+            // Use the specific error message from the backend
+            errorMessage =
+                errorBody['error'] ??
+                'Forbidden: Cannot edit room due to active bookings. Status 403.'; //
+          } catch (e) {
+            // Fallback message if JSON parsing fails
+            errorMessage =
+                'Forbidden: Cannot edit room due to active bookings.';
+          }
+        } else {
+          // General error for other non-200 statuses
+          try {
+            // Try to get a structured error message if available
+            final Map<String, dynamic> errorBody = jsonDecode(response.body);
+            errorMessage =
+                errorBody['message'] ?? errorBody['error'] ?? errorMessage;
+          } catch (e) {
+            // If not JSON, show the raw body content as detail
+            errorMessage = '$errorMessage - Details: ${response.body}';
+          }
+        }
+
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(errorMessage)));
       }
     } catch (e) {
       if (mounted) {

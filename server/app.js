@@ -287,51 +287,74 @@ app.put(
     if (!room_name || !room_description || !room_status || !capacity) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
+    
+    // Check for any existing active bookings (Pending or Approved)
+    const checkActiveBookingsSql = `
+      SELECT COUNT(*) AS active_bookings_count 
+      FROM bookings 
+      WHERE room_id = ? 
+      AND booking_status IN ('Pending', 'approved')
+    `;
 
-    let sql;
-    let params;
-
-    if (req.file) {
-      const image = req.file.filename;
-      sql = `
-        UPDATE rooms 
-        SET 
-          room_name = ?, 
-          room_description = ?, 
-          room_status = ?,
-          capacity = ?,
-          image = ?
-        WHERE room_id = ?
-      `;
-      params = [room_name, room_description, room_status, capacity, image, roomId];
-    } else {
-      sql = `
-        UPDATE rooms 
-        SET 
-          room_name = ?, 
-          room_description = ?, 
-          room_status = ?,
-          capacity = ?
-        WHERE room_id = ?
-      `;
-      params = [room_name, room_description, room_status, capacity, roomId];
-    }
-
-    con.query(sql, params, (err, result) => {
+    con.query(checkActiveBookingsSql, [roomId], (err, results) => {
       if (err) {
-        console.error('Room Update Error:', err);
-        return res.status(500).json({ error: 'Database update failed' });
+        console.error('Active Bookings Check Error:', err);
+        return res.status(500).json({ error: 'Database query failed during status check' });
       }
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ error: 'Room not found' });
+
+      // If active bookings exist, forbid the action
+      if (results[0].active_bookings_count > 0) {
+        return res.status(403).json({ 
+          error: 'Forbidden: Cannot edit room details while there are active (Pending or Approved) bookings.' 
+        });
       }
-      res.status(200).json({ message: 'Room updated successfully' });
+
+      // If no active bookings, proceed with the room update
+      let sql;
+      let params;
+
+      if (req.file) {
+        const image = req.file.filename;
+        sql = `
+          UPDATE rooms 
+          SET 
+            room_name = ?, 
+            room_description = ?, 
+            room_status = ?,
+            capacity = ?,
+            image = ?
+          WHERE room_id = ?
+        `;
+        params = [room_name, room_description, room_status, capacity, image, roomId];
+      } else {
+        sql = `
+          UPDATE rooms 
+          SET 
+            room_name = ?, 
+            room_description = ?, 
+            room_status = ?,
+            capacity = ?
+          WHERE room_id = ?
+        `;
+        params = [room_name, room_description, room_status, capacity, roomId];
+      }
+
+      con.query(sql, params, (err, result) => {
+        if (err) {
+          console.error('Room Update Error:', err);
+          return res.status(500).json({ error: 'Database update failed' });
+        }
+        if (result.affectedRows === 0) {
+          return res.status(404).json({ error: 'Room not found' });
+        }
+        res.status(200).json({ message: 'Room updated successfully' });
+      });
     });
   }
 );
 
 ///=========================================================================
-///======================= BOOKING ROUTES ==================================
+///======================= History ==================================
 ///=========================================================================
 
 // GET Bookings for a user (History Page for ALL roles)
